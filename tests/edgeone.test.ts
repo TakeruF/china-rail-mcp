@@ -41,7 +41,9 @@ describe('EdgeOne HTTP transport', () => {
       env: { MCP_HTTP_BEARER_TOKEN: 'correct' },
     });
     expect(response.status).toBe(401);
-    expect(response.headers.get('www-authenticate')).toBe('Bearer');
+    expect(response.headers.get('www-authenticate')).toBe(
+      'Bearer resource_metadata="https://china-rail-mcp.example/.well-known/oauth-protected-resource/mcp"',
+    );
   });
 
   it('initializes over stateless Streamable HTTP when authorized', async () => {

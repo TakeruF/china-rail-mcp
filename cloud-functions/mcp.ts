@@ -2,6 +2,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js';
 import { Rail12306Provider } from '../src/providers/rail12306.js';
 import { createServer } from '../src/server.js';
+import { oauthAccessAuthorized, oauthChallenge } from './oauth.js';
 
 interface EdgeOneContext {
   request: Request;
@@ -28,8 +29,8 @@ function json(status: number, body: unknown, headers: HeadersInit = {}): Respons
 export async function onRequest({ request, env }: EdgeOneContext): Promise<Response> {
   const token = env.MCP_HTTP_BEARER_TOKEN;
   if (!token) return json(503, { error: 'MCP HTTP transport is not configured.' });
-  if (!authorized(request, token)) {
-    return json(401, { error: 'Unauthorized' }, { 'www-authenticate': 'Bearer' });
+  if (!authorized(request, token) && !oauthAccessAuthorized(request, token)) {
+    return json(401, { error: 'Unauthorized' }, { 'www-authenticate': oauthChallenge(request) });
   }
 
   const server = createServer(provider);

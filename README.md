@@ -77,8 +77,12 @@ matching package metadata.
 The optional `cloud-functions/mcp.ts` entry exposes stateless Streamable HTTP at `/mcp`, and
 `cloud-functions/health.ts` exposes `/health`. Deploy it as an EdgeOne Makers Node.js Cloud
 Function and set the secret environment variable `MCP_HTTP_BEARER_TOKEN`; without that variable,
-the MCP route returns `503` rather than becoming anonymously callable. The official anonymous
-12306 session remains process-memory-only and is never exposed to clients.
+the MCP route returns `503` rather than becoming anonymously callable. The same secret is the
+single-user connection password for the bundled OAuth 2.1 Authorization Code + PKCE flow used by
+ChatGPT custom apps. OAuth clients receive one-hour access tokens and renewable 30-day refresh
+tokens; the original connection password is submitted only to this deployment's `/authorize`
+route and is not stored by ChatGPT. Existing clients may continue to use the static bearer token.
+The official anonymous 12306 session remains process-memory-only and is never exposed to clients.
 
 ## Tools
 
