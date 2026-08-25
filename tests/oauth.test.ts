@@ -47,6 +47,13 @@ describe('EdgeOne ChatGPT OAuth', () => {
       grant_types_supported: ['authorization_code', 'refresh_token'],
       code_challenge_methods_supported: ['S256'],
     });
+
+    const proxied = metadata({
+      request: new Request('http://pages-scf.internal/.well-known/oauth-authorization-server'),
+    });
+    await expect(proxied.json()).resolves.toMatchObject({
+      issuer: 'https://china-rail-mcp.edgeone.dev',
+    });
   });
 
   it('completes DCR, PKCE authorization, refresh, and MCP initialization', async () => {

@@ -30,6 +30,7 @@ type RefreshTokenPayload = AccessTokenPayload;
 
 const READ_SCOPE = 'mcp:read';
 const OFFLINE_SCOPE = 'offline_access';
+const DEFAULT_PUBLIC_ORIGIN = 'https://china-rail-mcp.edgeone.dev';
 const BASE64URL = /^[A-Za-z0-9_-]{43,128}$/u;
 const MAX_BODY_BYTES = 32_768;
 
@@ -72,7 +73,13 @@ function unseal<T extends { exp: number }>(
 }
 
 function origin(request: Request): string {
-  return new URL(request.url).origin;
+  const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
+  if (forwardedHost) {
+    const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
+    return `${forwardedProto === 'http' ? 'http' : 'https'}://${forwardedHost}`;
+  }
+  const url = new URL(request.url);
+  return url.protocol === 'https:' ? url.origin : DEFAULT_PUBLIC_ORIGIN;
 }
 
 function resourceUrl(request: Request): string {
