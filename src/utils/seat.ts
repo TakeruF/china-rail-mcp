@@ -2,8 +2,10 @@ import type { AvailabilityStatus, Fare, SeatAvailabilityValue, SeatClass } from 
 const map: Record<string, SeatClass> = {
   商务座: 'business',
   特等座: 'premium_first',
+  优选一等座: 'premium_first',
   一等座: 'first_class',
   二等座: 'second_class',
+  动卧: 'soft_sleeper',
   软卧: 'soft_sleeper',
   硬卧: 'hard_sleeper',
   软座: 'soft_seat',

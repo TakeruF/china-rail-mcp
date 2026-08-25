@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { TrainJourney } from '../src/domain/train.js';
 import { Rail12306Provider } from '../src/providers/rail12306.js';
 
 const live = process.env.RUN_LIVE_12306 === '1';
@@ -6,6 +7,8 @@ const integration = live ? describe : describe.skip;
 
 integration('official 12306 public integration', () => {
   const provider = new Rail12306Provider();
+  const travelDate = formatChinaDate(new Date(Date.now() + 3 * 24 * 60 * 60 * 1000));
+  let journeys: TrainJourney[] = [];
 
   it('retrieves official station metadata and resolves the Shanghai–Hangzhou stations', async () => {
     await expect(provider.searchStations('上海虹桥')).resolves.toContainEqual(
@@ -16,19 +19,43 @@ integration('official 12306 public integration', () => {
     );
   }, 15_000);
 
-  it('advertises only capabilities backed by verified public unauthenticated routes', () => {
+  it('queries exact-station timetable, availability, and compact fares with an anonymous session', async () => {
     expect(provider.capabilities).toEqual({
       stationSearch: true,
-      timetable: false,
-      trainStops: false,
-      fares: false,
-      availability: false,
+      timetable: true,
+      trainStops: true,
+      fares: true,
+      availability: true,
     });
-  });
+    journeys = await provider.searchTrains({
+      from: '上海虹桥',
+      to: '杭州东',
+      date: travelDate,
+    });
+    expect(journeys.length).toBeGreaterThan(0);
+    expect(journeys.every((journey) => journey.departureStation === '上海虹桥')).toBe(true);
+    expect(journeys.every((journey) => journey.arrivalStation === '杭州东')).toBe(true);
+    expect(
+      journeys.some((journey) =>
+        journey.seatClasses.some((seat) => seat.availability && seat.fare),
+      ),
+    ).toBe(true);
+  }, 20_000);
 
-  it('returns a normalized capability error without querying an unsupported route', async () => {
-    await expect(
-      provider.searchTrains({ from: '上海虹桥', to: '杭州东', date: '2026-08-25' }),
-    ).rejects.toMatchObject({ code: 'PROVIDER_CAPABILITY_UNAVAILABLE' });
-  });
+  it('resolves a returned train to its official stop sequence', async () => {
+    const trainNumber = journeys[0]?.trainNumber;
+    expect(trainNumber).toBeTruthy();
+    const details = await provider.getTrainDetails({ trainNumber: trainNumber!, date: travelDate });
+    expect(details.trainNumber).toBe(trainNumber);
+    expect(details.stops.length).toBeGreaterThan(1);
+  }, 20_000);
 });
+
+function formatChinaDate(date: Date): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(date);
+}

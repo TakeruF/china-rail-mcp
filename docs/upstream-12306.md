@@ -1,91 +1,132 @@
 # 12306 Upstream Interfaces
 
-Observation date: 2026-08-19. All requests below were ordinary, unauthenticated
-HTTPS GET requests to official `12306.cn` domains. They used no login, cookies,
-CAPTCHA handling, browser automation, anti-bot workaround, or request-signature
-workaround. Results are point-in-time observations, not a promise of stability.
+Observation date: 2026-08-25. All requests below were low-frequency, read-only HTTPS GET
+requests to official `12306.cn` domains. No login, user/account cookie, CAPTCHA handling,
+browser automation, request-signature workaround, booking, or payment was used. Results are
+point-in-time observations, not a stability promise or a supported developer API.
+
+## Anonymous-session boundary
+
+The official ticket-query page issues anonymous session and load-balancer cookies. The project
+may use those cookies only under these restrictions:
+
+- obtain them directly from `https://kyfw.12306.cn/otn/leftTicket/init?linktypeid=dc`;
+- keep values only in process memory and never persist, log, expose, or accept them as input;
+- never accept a user's 12306 cookie, account, credential, SMS code, or CAPTCHA result;
+- send cookies only to the allowlisted official `kyfw.12306.cn` query route;
+- reuse a session for no more than ten minutes and refresh it once after rejection;
+- make only user-initiated read requests, with no continuous polling or rate-limit evasion.
+
+On the observation date, the init page returned HTTP 200 and three anonymous cookie records. A
+direct ticket query without them returned HTTP 302. Reusing the new anonymous cookies in the
+same normal page flow returned HTTP 200 JSON with `status: true`. Cookie values were not
+recorded.
 
 ## Station metadata
 
 - Status: supported
 - Source: `https://kyfw.12306.cn/otn/resources/js/framework/station_name.js`
 - Method and parameters: `GET`; none
-- Authentication/cookies: neither required or sent
-- Observed behavior: HTTP 200 JavaScript assigning `station_names` to a delimited
-  station list. The response contained `上海虹桥|AOH` and `杭州东|HGH`.
-- Response format: JavaScript text, parsed only after locating the expected
-  `station_names` assignment.
+- Session: not required
+- Observed behavior: HTTP 200 JavaScript assigning `station_names` to a delimited station list.
+  The response contained `上海虹桥|AOH` and `杭州东|HGH`.
 - Failure mode: non-200/network errors are normalized as
   `UPSTREAM_TEMPORARILY_UNAVAILABLE`; an unexpected script shape is
   `UPSTREAM_RESPONSE_CHANGED`.
-- Apparent stability: comparatively stable static public asset, but undocumented.
-  The provider caches it in process for 24 hours.
-- Project use: acceptable, read-only public metadata.
+- Project use: acceptable read-only metadata, cached in process for up to 24 hours.
 
-## Timetable / remaining-ticket query
+## Timetable and remaining-ticket query
 
-- Status: unsupported
-- Candidate source: `https://kyfw.12306.cn/otn/leftTicket/query`
-- Method and parameters: `GET` with `leftTicketDTO.train_date`,
-  `leftTicketDTO.from_station`, `leftTicketDTO.to_station`, and `purpose_codes`.
-- Authentication/cookies: none were sent.
-- Observed behavior: for `上海虹桥 (AOH) → 杭州东 (HGH)`, date `2026-08-25`, the
-  endpoint returned HTTP 302 and JSON naming `leftTicket/queryB`; direct `queryB`,
-  `queryA`, and `queryZ` requests returned HTTP 302 to
-  `https://www.12306.cn/mormhweb/logFiles/error.html`.
-- Response format/failure mode: the initial response was a JSON redirect hint, not
-  timetable data; the redirected candidates returned no structured data.
-- Apparent stability: not usable from this normal unauthenticated environment.
-- Project use: not acceptable. `timetable` and `availability` remain disabled; the
-  server returns `PROVIDER_CAPABILITY_UNAVAILABLE` without repeatedly calling it.
+- Status: supported with an official anonymous session
+- Source: `https://kyfw.12306.cn/otn/leftTicket/queryG`
+- Parameters: `leftTicketDTO.train_date`, `leftTicketDTO.from_station`,
+  `leftTicketDTO.to_station`, and `purpose_codes=ADULT`
+- Session: short-lived memory-only anonymous cookies plus the official query-page referer
+- Observed route: `上海虹桥 (AOH) → 杭州东 (HGH)`, 2026-08-30
+- Observed response: HTTP 200 JSON, `status: true`, 369 city-area rows and 11 station codes
+- Exact-pair result: 118 rows whose actual departure and arrival codes were `AOH → HGH`
 
-## Train stops
+The official response broadens a query to other stations in the same cities. It included, for
+example, Shanghai South, Shanghai Songjiang, Hangzhou, Hangzhou West, and Hangzhou South. The
+provider therefore filters row indexes 6 and 7 against the explicitly resolved station codes.
+It never treats every station in a city as the requested exact station.
 
-- Status: unsupported
-- Official public pages inspected:
-  `https://kyfw.12306.cn/otn/queryTrainInfo/init` and
-  `https://kyfw.12306.cn/otn/czxx/init`.
-- Authentication/cookies: no login was attempted or used.
-- Observed behavior: the official train-number query page presents a CAPTCHA; the
-  station train query is a public page but its usable data query route was not
-  verified without CAPTCHA/session state. A direct historical-style
-  `/otn/czxx/query` request returned HTTP 404.
-- Response format/failure mode: HTML form/CAPTCHA or 404, not a verified public
-  structured stop sequence.
-- Apparent stability: unsuitable for a server that must not handle CAPTCHAs or use
-  session state.
-- Project use: not acceptable. `trainStops` is disabled.
+Remaining-ticket values are read from the current official row indexes and preserved as raw
+values alongside normalized states:
+
+| Row index | Seat type       |
+| --------- | --------------- |
+| 32        | Business        |
+| 25        | Premium/special |
+| 31        | First class     |
+| 30        | Second class    |
+| 21        | Advanced soft   |
+| 23        | Soft sleeper    |
+| 33        | Dynamic sleeper |
+| 28        | Hard sleeper    |
+| 24        | Soft seat       |
+| 29        | Hard seat       |
+| 26        | Standing        |
+
+Known values such as `有`, `无`, and numeric counts are normalized. Unknown values remain
+`unknown` with the exact upstream value; they are never guessed.
+
+## Train-number search and stops
+
+- Status: supported without a session
+- Train search: `https://search.12306.cn/search/v1/train/search`
+- Train-search parameters: exact public train code as `keyword`, date as `YYYYMMDD`
+- Stop source: `https://kyfw.12306.cn/otn/czxx/queryByTrainNo`
+- Stop parameters: resolved `train_no`, `from_station_telecode=BBB`,
+  `to_station_telecode=BBB`, and `depart_date`
+
+The train-search endpoint performs prefix matching, so the provider filters
+`station_train_code` for an exact case-insensitive match before using an internal `train_no`.
+On the observation date, G1 resolved successfully and its stop query returned seven stops from
+Beijing South to Shanghai Hongqiao, including arrival, departure, and stopover times.
 
 ## Fares
 
-- Status: unsupported
-- Official public page: `https://kyfw.12306.cn/otn/leftTicketPrice/initPublicPrice`
-- Candidate source: `https://kyfw.12306.cn/otn/leftTicketPrice/query`
-- Method and parameters: historical `GET` route was checked with the standard
-  route/date parameters only; no cookies were retained or replayed.
-- Observed behavior: HTTP 200 JSON with `status: false` and the message
-  `系统忙，请稍后重试` (system busy; try later). It did not provide a fare result.
-- Response format/failure mode: JSON application response but no usable data.
-- Apparent stability: route/page exists, but no verified unauthenticated fare
-  response was obtained.
-- Project use: not acceptable. `fares` is disabled.
+- Status: supported
+- Search-row source: compact fare field at current row index 39
+- Detail source used for verification:
+  `https://kyfw.12306.cn/otn/leftTicket/queryTicketPrice`
+- Detail parameters: `train_no`, `from_station_no`, `to_station_no`, `seat_types`, and
+  `train_date`
 
-## Seat availability
+The compact fare field consists of current ten-character seat/price chunks and avoids sending a
+separate request for every returned train. Three exact-pair samples were cross-checked against
+the official detail route:
 
-- Status: unsupported
-- Source: same `leftTicket/query` family as the timetable query.
-- Authentication/cookies: none were sent.
-- Observed behavior: no ticket-result payload was obtained because the query chain
-  redirected to the official error page.
-- Response format/failure mode: no seat fields were available to normalize.
-- Apparent stability: not usable from this normal unauthenticated environment.
-- Project use: not acceptable. `availability` is disabled; no cached value is
-  presented as current.
+| Train | Detail status | Observed latency | Example second-class fare |
+| ----- | ------------- | ---------------- | ------------------------- |
+| G4917 | HTTP 200      | 217 ms           | CNY 83.0                  |
+| G7541 | HTTP 200      | 311 ms           | CNY 57.0                  |
+| G1321 | HTTP 200      | 229 ms           | CNY 76.0                  |
+
+The official page describes displayed prices as reference values and says the payment-confirmed
+price is authoritative. The MCP remains read-only and performs no payment or booking step.
+
+## Failure handling and load limits
+
+- A rejected/redirected anonymous session is discarded and initialized once more.
+- HTTP 5xx and transient network failures receive at most one retry after 250 ms.
+- HTTP 429 becomes `RATE_LIMITED`; the provider does not immediately retry it.
+- Upstream alternate query paths are followed only when they match the allowlisted
+  `leftTicket/query[A-Z]` form on the same official host.
+- Timetable and availability are not cached as current. Each MCP request is user initiated; no
+  background refresh or automatic polling exists.
+- Every returned journey and availability result includes a retrieval timestamp.
 
 ## Scope decision
 
-Only the station metadata route satisfies the project's current public,
-unauthenticated, read-only standard. Future support must begin with a fresh live
-verification and retain this document's request-boundary rules. No third-party
-source, shared cookie, account, CAPTCHA handling, or automation workaround is an
-acceptable substitute.
+The official provider is technically usable for read-only station, timetable, remaining-ticket,
+fare, train-number, and stop-sequence queries using only a short-lived anonymous web session.
+The service remains undocumented and may change without notice. The official site publishes
+service terms restricting unrecognized automated access and displays a notice that similar
+third-party sites/apps have not been authorized. Operators are responsible for reviewing and
+complying with the current terms before deployment.
+
+APIHZ and other third-party sources are not used by the implementation. They do not improve
+source accuracy over the official response, and no third-party cookie, shared credential, or
+provider account is required.

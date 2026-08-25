@@ -36,10 +36,20 @@ export function createServer(provider: RailProvider): McpServer {
     'get_provider_status',
     {
       description:
-        'Return the configured provider and its currently verified unauthenticated public-data capabilities.',
+        'Return the official provider, its verified capabilities, and anonymous-session policy.',
       inputSchema: {},
     },
-    async () => text({ provider: '12306-public', capabilities: provider.capabilities }),
+    async () =>
+      text({
+        provider: '12306-official',
+        capabilities: provider.capabilities,
+        sessionPolicy: {
+          authentication: 'none',
+          userCookiesAccepted: false,
+          anonymousCookies: 'memory-only',
+          automaticPolling: false,
+        },
+      }),
   );
   server.registerTool(
     'search_stations',
@@ -59,7 +69,8 @@ export function createServer(provider: RailProvider): McpServer {
   server.registerTool(
     'search_trains',
     {
-      description: 'Search unauthenticated public 12306 timetable data. Times are Asia/Shanghai.',
+      description:
+        'Search official read-only 12306 timetable, fare, and availability data. Times are Asia/Shanghai.',
       inputSchema: { from: z.string().min(1), to: z.string().min(1), date, ...filters },
     },
     async (input) => {
@@ -73,7 +84,7 @@ export function createServer(provider: RailProvider): McpServer {
   server.registerTool(
     'get_train_details',
     {
-      description: 'Get a train stop sequence when the public provider supports it.',
+      description: 'Get an official train stop sequence for an exact train number and date.',
       inputSchema: { trainNumber: z.string().min(1), date },
     },
     async (input) => {
@@ -88,7 +99,7 @@ export function createServer(provider: RailProvider): McpServer {
     'get_availability',
     {
       description:
-        'Get normalized seat availability where public upstream data makes it available.',
+        'Get normalized official seat availability for an exact station pair, train, and date.',
       inputSchema: {
         from: z.string().min(1),
         to: z.string().min(1),
