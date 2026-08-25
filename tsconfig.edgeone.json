@@ -4,6 +4,6 @@
     "noEmit": true,
     "rootDir": "."
   },
-  "include": ["src/**/*.ts", "cloud-functions/**/*.ts", "tests/**/*.ts"],
+  "include": ["src/**/*.ts", "cloud-functions/**/*.ts", "api/**/*.ts", "tests/**/*.ts"],
   "exclude": ["dist", "node_modules"]
 }

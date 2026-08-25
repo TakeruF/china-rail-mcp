@@ -5,6 +5,7 @@ import { onRequest as metadata } from '../cloud-functions/[[path]].js';
 import { onRequest as mcp } from '../cloud-functions/mcp.js';
 import { onRequest as register } from '../cloud-functions/register.js';
 import { onRequest as token } from '../cloud-functions/token.js';
+import { oauthMetadata } from '../cloud-functions/oauth.js';
 
 const base = 'https://china-rail-mcp.example';
 const secret = 'test-connection-password';
@@ -54,6 +55,24 @@ describe('EdgeOne ChatGPT OAuth', () => {
     await expect(proxied.json()).resolves.toMatchObject({
       issuer: 'https://china-rail-mcp.edgeone.dev',
     });
+
+    const vercel = oauthMetadata(
+      new Request('https://china-rail-mcp.vercel.app/api/.well-known/oauth-authorization-server'),
+    );
+    await expect(vercel.json()).resolves.toMatchObject({
+      issuer: 'https://china-rail-mcp.vercel.app/api',
+      authorization_endpoint: 'https://china-rail-mcp.vercel.app/api/authorize',
+      token_endpoint: 'https://china-rail-mcp.vercel.app/api/token',
+      registration_endpoint: 'https://china-rail-mcp.vercel.app/api/register',
+    });
+
+    const vercelChallenge = await mcp({
+      request: new Request('https://china-rail-mcp.vercel.app/api/mcp'),
+      env,
+    });
+    expect(vercelChallenge.headers.get('www-authenticate')).toBe(
+      'Bearer resource_metadata="https://china-rail-mcp.vercel.app/api/oauth-protected-resource"',
+    );
   });
 
   it('completes DCR, PKCE authorization, refresh, and MCP initialization', async () => {
@@ -73,7 +92,11 @@ describe('EdgeOne ChatGPT OAuth', () => {
     }).toString();
     const consent = await authorize({ request: new Request(authorizeUrl), env });
     expect(consent.status).toBe(200);
+    expect(consent.headers.get('content-security-policy')).toContain(
+      "form-action 'self' https://chatgpt.com",
+    );
     const page = await consent.text();
+    expect(page).toContain('form method="post" action="/authorize"');
     const request = /name="request" value="([^"]+)"/u.exec(page)?.[1]?.replaceAll('&amp;', '&');
     const proof = /name="proof" value="([^"]+)"/u.exec(page)?.[1];
     expect(request).toBeTruthy();

@@ -76,10 +76,14 @@ function origin(request: Request): string {
   const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
   if (forwardedHost) {
     const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
-    return `${forwardedProto === 'http' ? 'http' : 'https'}://${forwardedHost}`;
+    const forwardedOrigin = `${forwardedProto === 'http' ? 'http' : 'https'}://${forwardedHost}`;
+    return new URL(request.url).pathname.startsWith('/api/')
+      ? `${forwardedOrigin}/api`
+      : forwardedOrigin;
   }
   const url = new URL(request.url);
-  return url.protocol === 'https:' ? url.origin : DEFAULT_PUBLIC_ORIGIN;
+  if (url.protocol !== 'https:') return DEFAULT_PUBLIC_ORIGIN;
+  return url.pathname.startsWith('/api/') ? `${url.origin}/api` : url.origin;
 }
 
 function resourceUrl(request: Request): string {
@@ -132,7 +136,7 @@ function htmlEscape(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-function authorizePage(params: URLSearchParams, secret: string): Response {
+function authorizePage(params: URLSearchParams, secret: string, action: string): Response {
   const serialized = params.toString();
   const proof = hmac(serialized, secret, 'authorize-request');
   const page = `<!doctype html>
@@ -158,7 +162,7 @@ function authorizePage(params: URLSearchParams, secret: string): Response {
   <main>
     <h1>Authorize China Rail MCP</h1>
     <p>Allow ChatGPT to use the read-only official 12306 timetable, fare, stop, and seat-availability tools.</p>
-    <form method="post" action="/authorize">
+    <form method="post" action="${htmlEscape(action)}">
       <input type="hidden" name="request" value="${htmlEscape(serialized)}">
       <input type="hidden" name="proof" value="${htmlEscape(proof)}">
       <label>Connection password
@@ -175,7 +179,7 @@ function authorizePage(params: URLSearchParams, secret: string): Response {
       'cache-control': 'no-store',
       'content-type': 'text/html; charset=utf-8',
       'content-security-policy':
-        "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'",
+        "default-src 'none'; style-src 'unsafe-inline'; form-action 'self' https://chatgpt.com; base-uri 'none'; frame-ancestors 'none'",
       'x-frame-options': 'DENY',
       'x-content-type-options': 'nosniff',
     },
@@ -301,7 +305,7 @@ export async function authorize({ request, env }: EdgeOneContext): Promise<Respo
       resource,
       scope: requestedScopes.join(' '),
     });
-    return authorizePage(normalized, secret);
+    return authorizePage(normalized, secret, new URL(request.url).pathname);
   }
 
   if (request.method !== 'POST') return new Response(null, { status: 405 });
@@ -422,5 +426,9 @@ export function oauthAccessAuthorized(request: Request, secret: string): boolean
 }
 
 export function oauthChallenge(request: Request): string {
-  return `Bearer resource_metadata="${origin(request)}/.well-known/oauth-protected-resource/mcp"`;
+  const base = origin(request);
+  const metadataPath = base.endsWith('/api')
+    ? '/oauth-protected-resource'
+    : '/.well-known/oauth-protected-resource/mcp';
+  return `Bearer resource_metadata="${base}${metadataPath}"`;
 }

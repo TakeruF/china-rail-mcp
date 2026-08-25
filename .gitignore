@@ -7,3 +7,4 @@ cookies.json
 session.json
 credentials.json
 *.har
+.vercel
