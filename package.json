@@ -1,6 +1,7 @@
 {
   "name": "china-rail-mcp",
   "version": "0.1.0",
+  "mcpName": "io.github.takeruf/china-rail-mcp",
   "description": "Read-only MCP server for Chinese railway schedules, fares, stops, and seat availability.",
   "license": "MIT",
   "repository": {
@@ -17,6 +18,7 @@
   },
   "files": [
     "dist",
+    "server.json",
     "README.md",
     "LICENSE",
     "SECURITY.md"
@@ -35,7 +37,7 @@
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.edgeone.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:integration": "RUN_LIVE_12306=1 vitest run tests/integration.test.ts"

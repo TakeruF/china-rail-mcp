@@ -9,6 +9,17 @@ export interface QueryFilters {
   seatClass?: string | undefined;
   onlyAvailable?: boolean | undefined;
 }
+export interface PaginationInput {
+  limit: number;
+  offset: number;
+}
+export interface PaginatedJourneys extends PaginationInput {
+  total: number;
+  returned: number;
+  hasMore: boolean;
+  nextOffset: number | null;
+  journeys: TrainJourney[];
+}
 export function filterJourneys(journeys: TrainJourney[], filters: QueryFilters): TrainJourney[] {
   return journeys.filter(
     (j) =>
@@ -25,6 +36,23 @@ export function filterJourneys(journeys: TrainJourney[], filters: QueryFilters):
             s.availability?.status === 'available',
         )),
   );
+}
+export function paginateJourneys(
+  journeys: TrainJourney[],
+  { limit, offset }: PaginationInput,
+): PaginatedJourneys {
+  const page = journeys.slice(offset, offset + limit);
+  const nextOffset = offset + page.length;
+  const hasMore = nextOffset < journeys.length;
+  return {
+    total: journeys.length,
+    limit,
+    offset,
+    returned: page.length,
+    hasMore,
+    nextOffset: hasMore ? nextOffset : null,
+    journeys: page,
+  };
 }
 export function toolError(error: unknown): {
   content: [{ type: 'text'; text: string }];

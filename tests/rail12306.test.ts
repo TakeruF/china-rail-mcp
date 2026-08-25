@@ -8,7 +8,7 @@ import {
   parseTrainResults,
   parseTrainStops,
 } from '../src/providers/rail12306.js';
-import { filterJourneys } from '../src/tools/common.js';
+import { filterJourneys, paginateJourneys } from '../src/tools/common.js';
 import { assertTravelDate } from '../src/utils/date.js';
 import { normalizeAvailability, normalizeSeatClass, parseFare } from '../src/utils/seat.js';
 const stations = parseStationScript(readFileSync('fixtures/stations.js', 'utf8'));
@@ -90,6 +90,28 @@ describe('filtering', () => {
     expect(
       filterJourneys(trains, { trainTypes: ['G'], departAfter: '05:00', onlyAvailable: true }),
     ).toHaveLength(1));
+
+  it('paginates a filtered result with stable continuation metadata', () => {
+    const filtered = filterJourneys(trains, { trainTypes: ['G'] });
+    expect(paginateJourneys(filtered, { limit: 1, offset: 0 })).toMatchObject({
+      total: filtered.length,
+      limit: 1,
+      offset: 0,
+      returned: 1,
+      hasMore: filtered.length > 1,
+      nextOffset: filtered.length > 1 ? 1 : null,
+      journeys: filtered.slice(0, 1),
+    });
+  });
+
+  it('returns an empty terminal page when the offset exceeds the result count', () =>
+    expect(paginateJourneys(trains, { limit: 20, offset: trains.length + 1 })).toMatchObject({
+      total: trains.length,
+      returned: 0,
+      hasMore: false,
+      nextOffset: null,
+      journeys: [],
+    }));
 });
 
 describe('provider capabilities', () => {

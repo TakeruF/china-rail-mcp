@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { RailProvider } from './providers/types.js';
-import { journeys, toolError } from './tools/common.js';
+import { journeys, paginateJourneys, toolError } from './tools/common.js';
 import { timeToMinutes } from './utils/date.js';
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD (Asia/Shanghai).');
@@ -26,18 +26,35 @@ const filters = {
     .optional(),
   onlyAvailable: z.boolean().optional(),
 };
+const pagination = (defaultLimit: number) => ({
+  limit: z.number().int().min(1).max(50).default(defaultLimit),
+  offset: z.number().int().min(0).default(0),
+});
+const readOnlyAnnotations = {
+  readOnlyHint: true,
+  destructiveHint: false,
+  idempotentHint: true,
+  openWorldHint: true,
+};
 const text = (value: unknown) => ({
   content: [{ type: 'text' as const, text: JSON.stringify(value, null, 2) }],
 });
 
 export function createServer(provider: RailProvider): McpServer {
-  const server = new McpServer({ name: 'china-rail-mcp', version: '0.1.0' });
+  const server = new McpServer(
+    { name: 'china-rail-mcp', version: '0.1.0' },
+    {
+      instructions:
+        'Read-only official China Railway 12306 data. Resolve ambiguous stations with search_stations; never silently substitute a city for a station. Use limit/offset pagination for train searches. Data and fares are informational and important travel or payment details must be verified through official 12306 channels. Do not poll automatically.',
+    },
+  );
   server.registerTool(
     'get_provider_status',
     {
       description:
         'Return the official provider, its verified capabilities, and anonymous-session policy.',
       inputSchema: {},
+      annotations: readOnlyAnnotations,
     },
     async () =>
       text({
@@ -57,6 +74,7 @@ export function createServer(provider: RailProvider): McpServer {
       description:
         'Search public Chinese railway stations. City names are not silently resolved to a specific station.',
       inputSchema: { query: z.string().min(1) },
+      annotations: readOnlyAnnotations,
     },
     async ({ query }) => {
       try {
@@ -70,12 +88,19 @@ export function createServer(provider: RailProvider): McpServer {
     'search_trains',
     {
       description:
-        'Search official read-only 12306 timetable, fare, and availability data. Times are Asia/Shanghai.',
-      inputSchema: { from: z.string().min(1), to: z.string().min(1), date, ...filters },
+        'Search official read-only 12306 timetable, fare, and availability data. Results are paginated after filtering. Times are Asia/Shanghai.',
+      inputSchema: {
+        from: z.string().min(1),
+        to: z.string().min(1),
+        date,
+        ...filters,
+        ...pagination(20),
+      },
+      annotations: readOnlyAnnotations,
     },
-    async (input) => {
+    async ({ limit, offset, ...input }) => {
       try {
-        return text(await journeys(provider, input));
+        return text(paginateJourneys(await journeys(provider, input), { limit, offset }));
       } catch (e) {
         return toolError(e);
       }
@@ -86,6 +111,7 @@ export function createServer(provider: RailProvider): McpServer {
     {
       description: 'Get an official train stop sequence for an exact train number and date.',
       inputSchema: { trainNumber: z.string().min(1), date },
+      annotations: readOnlyAnnotations,
     },
     async (input) => {
       try {
@@ -106,6 +132,7 @@ export function createServer(provider: RailProvider): McpServer {
         date,
         trainNumber: z.string().min(1),
       },
+      annotations: readOnlyAnnotations,
     },
     async (input) => {
       try {
@@ -118,18 +145,21 @@ export function createServer(provider: RailProvider): McpServer {
   server.registerTool(
     'compare_trains',
     {
-      description: 'Filter and sort journeys; this does not make subjective recommendations.',
+      description:
+        'Filter, sort, and paginate journeys; this does not make subjective recommendations.',
       inputSchema: {
         from: z.string().min(1),
         to: z.string().min(1),
         date,
         ...filters,
+        ...pagination(10),
         sortBy: z
           .enum(['departure_time', 'arrival_time', 'duration', 'price'])
           .default('departure_time'),
       },
+      annotations: readOnlyAnnotations,
     },
-    async ({ sortBy, ...input }) => {
+    async ({ sortBy, limit, offset, ...input }) => {
       try {
         const result = await journeys(provider, input);
         result.sort((a, b) =>
@@ -141,7 +171,7 @@ export function createServer(provider: RailProvider): McpServer {
                 ? minPrice(a) - minPrice(b)
                 : timeToMinutes(a.departureTime) - timeToMinutes(b.departureTime),
         );
-        return text(result);
+        return text(paginateJourneys(result, { limit, offset }));
       } catch (e) {
         return toolError(e);
       }

@@ -63,16 +63,33 @@ For a local MCP client, configure stdio (adjust the absolute path):
 Development commands: `npm run dev`, `npm run lint`, `npm run typecheck`, `npm test`, and
 `npm run build`. `npm run test:integration` is opt-in and is never run by CI.
 
+After the npm package is published, clients can start it without a checkout:
+
+```sh
+npx -y china-rail-mcp
+```
+
+Its MCP Registry identity is `io.github.takeruf/china-rail-mcp`; `server.json` contains the
+matching package metadata.
+
+### EdgeOne Makers
+
+The optional `cloud-functions/mcp.ts` entry exposes stateless Streamable HTTP at `/mcp`, and
+`cloud-functions/health.ts` exposes `/health`. Deploy it as an EdgeOne Makers Node.js Cloud
+Function and set the secret environment variable `MCP_HTTP_BEARER_TOKEN`; without that variable,
+the MCP route returns `503` rather than becoming anonymously callable. The official anonymous
+12306 session remains process-memory-only and is never exposed to clients.
+
 ## Tools
 
 | Tool                  | Purpose                                                                               |
 | --------------------- | ------------------------------------------------------------------------------------- |
 | `get_provider_status` | Return verified capabilities and the anonymous-session safety policy.                 |
 | `search_stations`     | Find stations and their 12306 codes. A city is never silently treated as one station. |
-| `search_trains`       | Return exact-station timetables, fares, and normalized remaining-ticket data.         |
+| `search_trains`       | Return paginated exact-station timetables, fares, and remaining-ticket data.          |
 | `get_train_details`   | Resolve an exact train number and return its complete official stop sequence.         |
 | `get_availability`    | Return normalized availability for an exact station pair, train, and date.            |
-| `compare_trains`      | Filter/sort supported journeys; it does not make subjective recommendations.          |
+| `compare_trains`      | Filter/sort paginated journeys; it does not make subjective recommendations.          |
 
 Example prompts:
 
@@ -81,6 +98,11 @@ Example prompts:
 - Show trains from 上海虹桥 to 杭州东 three days from now.
 - Show the complete stop sequence for G1 on a specified date.
 - What public-data capabilities does the configured provider currently support?
+
+`search_trains` returns 20 journeys by default and `compare_trains` returns 10. Both accept
+`limit` (1-50) and `offset`; filters and comparison sorting are applied before paging. Their
+response includes `total`, `returned`, `hasMore`, `nextOffset`, and `journeys`, so clients can
+continue without requesting an unbounded payload.
 
 ## Architecture
 
