@@ -116,14 +116,18 @@ parsing, a single-flight anonymous-session initializer, exact station filtering,
 behavior, and a station-metadata cache; domain types remain provider-neutral.
 
 All travel dates (`YYYY-MM-DD`) and timetable times are interpreted as China Standard Time
-(`Asia/Shanghai`), never the host computer timezone. Fares are normalized to CNY; availability
-includes both a normalized state and the original upstream value.
+(`Asia/Shanghai`), never the host computer timezone. Ticket queries are accepted only for the
+current official 15-day presale window (today plus 14 days); dates outside it return
+`DATE_OUTSIDE_QUERY_WINDOW` without contacting 12306. Fares are normalized to CNY;
+availability includes both a normalized state and the original upstream value.
 
 ## Provider limits and freshness
 
 The station master script is cached for 24 hours. Timetable and availability results are not
 cached as current. An anonymous query session is reused in memory for at most ten minutes; a
-redirected or rejected session is refreshed once. Network and 5xx failures receive at most one
+redirected ticket query refreshes the session once. If both queries redirect, the provider
+returns `UPSTREAM_QUERY_REJECTED` rather than claiming session initialization failed. Network and
+5xx failures receive at most one
 transient retry. The server does not continuously poll, evade rate limits, or follow an upstream
 redirect outside the allowlisted official query route.
 

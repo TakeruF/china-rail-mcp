@@ -9,7 +9,7 @@ import {
   parseTrainStops,
 } from '../src/providers/rail12306.js';
 import { filterJourneys, paginateJourneys } from '../src/tools/common.js';
-import { assertTravelDate } from '../src/utils/date.js';
+import { assertQueryableTravelDate, assertTravelDate } from '../src/utils/date.js';
 import { normalizeAvailability, normalizeSeatClass, parseFare } from '../src/utils/seat.js';
 const stations = parseStationScript(readFileSync('fixtures/stations.js', 'utf8'));
 const trains = parseTrainResults(JSON.parse(readFileSync('fixtures/left-ticket.json', 'utf8')));
@@ -82,7 +82,18 @@ describe('normalization', () => {
     expect(parseFare('¥553.0')).toEqual({ amount: 553, currency: 'CNY' }));
   it('validates dates', () => {
     expect(() => assertTravelDate('2026-99-20')).toThrow(RailError);
+    expect(() => assertTravelDate('2026-02-31')).toThrow(RailError);
     expect(() => assertTravelDate('20-09-2026')).toThrow(RailError);
+  });
+  it('limits ticket queries to the current 15-day 12306 window in Asia/Shanghai', () => {
+    const now = new Date('2026-08-30T00:00:00+08:00');
+    expect(() => assertQueryableTravelDate('2026-08-30', now)).not.toThrow();
+    expect(() => assertQueryableTravelDate('2026-09-13', now)).not.toThrow();
+    for (const date of ['2026-08-29', '2026-09-14']) {
+      expect(() => assertQueryableTravelDate(date, now)).toThrowError(
+        expect.objectContaining({ code: 'DATE_OUTSIDE_QUERY_WINDOW' }),
+      );
+    }
   });
 });
 describe('filtering', () => {
@@ -117,6 +128,7 @@ describe('filtering', () => {
 describe('provider capabilities', () => {
   const stationScript = readFileSync('fixtures/stations.js', 'utf8');
   const ticketPayload = readFileSync('fixtures/left-ticket.json', 'utf8');
+  const fixedNow = () => new Date('2026-08-25T00:00:00+08:00');
 
   function sessionResponse(cookie = 'JSESSIONID=anonymous; Path=/otn; HttpOnly'): Response {
     const headers = new Headers();
@@ -145,7 +157,7 @@ describe('provider capabilities', () => {
         });
       }
       throw new Error(`Unexpected URL: ${url}`);
-    });
+    }, fixedNow);
 
     const first = await provider.searchTrains({
       from: '上海虹桥',
@@ -185,13 +197,55 @@ describe('provider capabilities', () => {
           : new Response(ticketPayload, { headers: { 'content-type': 'application/json' } });
       }
       throw new Error(`Unexpected URL: ${url}`);
-    });
+    }, fixedNow);
 
     await expect(
       provider.searchTrains({ from: 'AOH', to: 'HGH', date: '2026-08-30' }),
     ).resolves.toHaveLength(1);
     expect(sessionInitializations).toBe(2);
     expect(ticketQueries).toBe(2);
+  });
+
+  it('does not mislabel two ticket-query redirects as session initialization failures', async () => {
+    let sessionInitializations = 0;
+    const provider = new Rail12306Provider(async (input) => {
+      const url = String(input);
+      if (url.includes('station_name.js')) return new Response(stationScript);
+      if (url.includes('leftTicket/init')) {
+        sessionInitializations++;
+        return sessionResponse(`JSESSIONID=session-${sessionInitializations}; Path=/otn`);
+      }
+      if (url.includes('leftTicket/queryG'))
+        return new Response(null, {
+          status: 302,
+          headers: { location: 'https://www.12306.cn/mormhweb/logFiles/error.html' },
+        });
+      throw new Error(`Unexpected URL: ${url}`);
+    }, fixedNow);
+
+    await expect(
+      provider.searchTrains({ from: 'AOH', to: 'HGH', date: '2026-08-30' }),
+    ).rejects.toMatchObject({
+      code: 'UPSTREAM_QUERY_REJECTED',
+      message: expect.not.stringContaining('session'),
+    });
+    expect(sessionInitializations).toBe(2);
+  });
+
+  it('rejects dates outside the query window before contacting 12306', async () => {
+    const provider = new Rail12306Provider(
+      async () => {
+        throw new Error('The upstream must not be contacted');
+      },
+      () => new Date('2026-08-30T00:00:00+08:00'),
+    );
+
+    await expect(
+      provider.searchTrains({ from: '深圳北', to: '广州南', date: '2026-09-19' }),
+    ).rejects.toMatchObject({
+      code: 'DATE_OUTSIDE_QUERY_WINDOW',
+      message: expect.stringContaining('2026-09-13'),
+    });
   });
 
   it('resolves an exact train number and parses its official stops', async () => {
@@ -231,7 +285,7 @@ describe('provider capabilities', () => {
           },
         });
       throw new Error(`Unexpected URL: ${url}`);
-    });
+    }, fixedNow);
 
     await expect(
       provider.getTrainDetails({ trainNumber: 'G7541', date: '2026-08-30' }),

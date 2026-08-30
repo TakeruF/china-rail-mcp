@@ -2,7 +2,7 @@ import { RailError } from '../errors.js';
 import type { Fare, SeatAvailability, SeatOffer } from '../domain/seat.js';
 import type { Station } from '../domain/station.js';
 import type { TrainDetails, TrainJourney, TrainStop } from '../domain/train.js';
-import { assertTravelDate } from '../utils/date.js';
+import { assertQueryableTravelDate, assertTravelDate } from '../utils/date.js';
 import { normalizeAvailability, normalizeSeatClass, parseFare } from '../utils/seat.js';
 import type {
   AvailabilityInput,
@@ -82,7 +82,10 @@ export class Rail12306Provider implements RailProvider {
   private session: AnonymousSession | undefined;
   private sessionInit: Promise<AnonymousSession> | undefined;
 
-  constructor(private readonly fetcher: typeof fetch = fetch) {}
+  constructor(
+    private readonly fetcher: typeof fetch = fetch,
+    private readonly now: () => Date = () => new Date(),
+  ) {}
 
   async searchStations(query: string): Promise<Station[]> {
     const normalized = query.trim().toLowerCase();
@@ -96,7 +99,7 @@ export class Rail12306Provider implements RailProvider {
   }
 
   async searchTrains(input: SearchTrainsInput): Promise<TrainJourney[]> {
-    assertTravelDate(input.date);
+    assertQueryableTravelDate(input.date, this.now());
     const [from] = await this.resolveExact(input.from);
     const [to] = await this.resolveExact(input.to);
     if (!from || !to)
@@ -142,7 +145,6 @@ export class Rail12306Provider implements RailProvider {
   }
 
   async getAvailability(input: AvailabilityInput): Promise<SeatAvailability> {
-    assertTravelDate(input.date);
     const journeys = await this.searchTrains(input);
     const journey = journeys.find(
       (candidate) => candidate.trainNumber.toUpperCase() === input.trainNumber.toUpperCase(),
@@ -232,8 +234,8 @@ export class Rail12306Provider implements RailProvider {
       this.session = undefined;
     }
     throw new RailError(
-      'UPSTREAM_TEMPORARILY_UNAVAILABLE',
-      '12306 rejected two short-lived anonymous query sessions.',
+      'UPSTREAM_QUERY_REJECTED',
+      '12306 redirected two anonymous ticket queries to its error page. Try again later.',
     );
   }
 

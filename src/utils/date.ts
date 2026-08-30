@@ -1,7 +1,62 @@
 import { RailError } from '../errors.js';
+
+export const QUERY_WINDOW_DAYS = 15;
+
 export function assertTravelDate(date: string): void {
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(`${date}T00:00:00+08:00`)))
+  const parts = parseDateParts(date);
+  if (!parts || !isRealDate(parts))
     throw new RailError('INVALID_DATE', 'Date must be a real YYYY-MM-DD date in Asia/Shanghai.');
+}
+
+export function assertQueryableTravelDate(date: string, now = new Date()): void {
+  assertTravelDate(date);
+  const today = chinaDate(now);
+  const daysAhead = dayNumber(date) - dayNumber(today);
+  if (daysAhead < 0 || daysAhead >= QUERY_WINDOW_DAYS) {
+    const lastQueryableDate = addDays(today, QUERY_WINDOW_DAYS - 1);
+    throw new RailError(
+      'DATE_OUTSIDE_QUERY_WINDOW',
+      `12306 currently accepts ticket queries from ${today} through ${lastQueryableDate} ` +
+        `(${QUERY_WINDOW_DAYS} days including today).`,
+    );
+  }
+}
+
+function parseDateParts(date: string): [number, number, number] | undefined {
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(date);
+  if (!match?.[1] || !match[2] || !match[3]) return undefined;
+  return [Number(match[1]), Number(match[2]), Number(match[3])];
+}
+
+function isRealDate([year, month, day]: [number, number, number]): boolean {
+  const value = new Date(Date.UTC(year, month - 1, day));
+  return (
+    value.getUTCFullYear() === year &&
+    value.getUTCMonth() === month - 1 &&
+    value.getUTCDate() === day
+  );
+}
+
+function dayNumber(date: string): number {
+  const parts = parseDateParts(date);
+  if (!parts) throw new RailError('INVALID_DATE', 'Date must use YYYY-MM-DD.');
+  return Date.UTC(parts[0], parts[1] - 1, parts[2]) / 86_400_000;
+}
+
+function addDays(date: string, days: number): string {
+  return new Date((dayNumber(date) + days) * 86_400_000).toISOString().slice(0, 10);
+}
+
+function chinaDate(date: Date): string {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Shanghai',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date);
+  const value = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((part) => part.type === type)?.value;
+  return `${value('year')}-${value('month')}-${value('day')}`;
 }
 export function parseDuration(value: string): number {
   const match = /^(?:(\d{1,2}):)?(\d{1,2}):(\d{2})$/.exec(value);

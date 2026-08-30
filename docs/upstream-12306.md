@@ -46,6 +46,10 @@ recorded.
 - Observed response: HTTP 200 JSON, `status: true`, 369 city-area rows and 11 station codes
 - Exact-pair result: 118 rows whose actual departure and arrival codes were `AOH → HGH`
 
+12306's official presale-period page reported a 15-day window including today on 2026-08-30.
+The provider validates this window in `Asia/Shanghai` before contacting the ticket endpoint and
+returns `DATE_OUTSIDE_QUERY_WINDOW` for past dates or dates more than 14 days ahead.
+
 The official response broadens a query to other stations in the same cities. It included, for
 example, Shanghai South, Shanghai Songjiang, Hangzhou, Hangzhou West, and Hangzhou South. The
 provider therefore filters row indexes 6 and 7 against the explicitly resolved station codes.
@@ -109,7 +113,9 @@ price is authoritative. The MCP remains read-only and performs no payment or boo
 
 ## Failure handling and load limits
 
-- A rejected/redirected anonymous session is discarded and initialized once more.
+- A redirected ticket query discards its anonymous session and initializes once more.
+- Two redirects become `UPSTREAM_QUERY_REJECTED`; a redirect alone is not described as proof
+  that anonymous session initialization failed.
 - HTTP 5xx and transient network failures receive at most one retry after 250 ms.
 - HTTP 429 becomes `RATE_LIMITED`; the provider does not immediately retry it.
 - Upstream alternate query paths are followed only when they match the allowlisted
