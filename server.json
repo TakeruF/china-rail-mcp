@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.takeruf/china-rail-mcp",
   "title": "China Rail MCP",
-  "description": "Read-only official China Railway 12306 timetables, fares, stops, and seat availability.",
+  "description": "Unofficial read-only MCP using public China Railway 12306 endpoints for timetables, fares, stops, and seat availability.",
   "version": "0.1.0",
   "websiteUrl": "https://github.com/TakeruF/china-rail-mcp",
   "repository": {
