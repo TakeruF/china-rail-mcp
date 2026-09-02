@@ -3,6 +3,8 @@ export type SeatClass =
   | 'premium_first'
   | 'first_class'
   | 'second_class'
+  | 'advanced_soft_sleeper'
+  | 'dynamic_sleeper'
   | 'soft_sleeper'
   | 'hard_sleeper'
   | 'soft_seat'

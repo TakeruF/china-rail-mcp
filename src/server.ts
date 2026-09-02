@@ -3,19 +3,29 @@ import { z } from 'zod';
 import type { RailProvider } from './providers/types.js';
 import { journeys, paginateJourneys, toolError } from './tools/common.js';
 import { timeToMinutes } from './utils/date.js';
+import { TRAIN_TYPE_CODES } from './domain/train.js';
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD (Asia/Shanghai).');
 const time = z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM.');
 const filters = {
   departAfter: time.optional(),
   departBefore: time.optional(),
-  trainTypes: z.array(z.string().min(1).max(1)).optional(),
+  trainTypes: z
+    .array(
+      z.preprocess(
+        (value) => (typeof value === 'string' ? value.toUpperCase() : value),
+        z.enum(TRAIN_TYPE_CODES),
+      ),
+    )
+    .optional(),
   seatClass: z
     .enum([
       'business',
       'premium_first',
       'first_class',
       'second_class',
+      'advanced_soft_sleeper',
+      'dynamic_sleeper',
       'soft_sleeper',
       'hard_sleeper',
       'soft_seat',
@@ -45,7 +55,7 @@ export function createServer(provider: RailProvider): McpServer {
     { name: 'china-rail-mcp', version: '0.1.0' },
     {
       instructions:
-        'Read-only official China Railway 12306 data. Resolve ambiguous stations with search_stations; never silently substitute a city for a station. Use limit/offset pagination for train searches. Data and fares are informational and important travel or payment details must be verified through official 12306 channels. Do not poll automatically.',
+        'Read-only official China Railway 12306 data. Resolve ambiguous stations with search_stations; never silently substitute a city for a station. Use limit/offset pagination for train searches. Route searches, fares, and availability are limited to the current ticket-query window; get_train_details may return a published timetable before tickets go on sale. Never interpret TIMETABLE_NOT_YET_PUBLISHED as cancellation or non-operation. Data and fares are informational and important travel or payment details must be verified through official 12306 channels. Do not poll automatically.',
     },
   );
   server.registerTool(
@@ -88,7 +98,7 @@ export function createServer(provider: RailProvider): McpServer {
     'search_trains',
     {
       description:
-        'Search official read-only 12306 timetable, fare, and availability data. Results are paginated after filtering. Times are Asia/Shanghai.',
+        'Search official read-only 12306 route, fare, and availability data within the current ticket-query window. Results are paginated after filtering. Times are Asia/Shanghai.',
       inputSchema: {
         from: z.string().min(1),
         to: z.string().min(1),
@@ -109,7 +119,8 @@ export function createServer(provider: RailProvider): McpServer {
   server.registerTool(
     'get_train_details',
     {
-      description: 'Get an official train stop sequence for an exact train number and date.',
+      description:
+        'Get a published official stop sequence for an exact train number and date, including booking status. A timetable may be available before tickets go on sale.',
       inputSchema: { trainNumber: z.string().min(1), date },
       annotations: readOnlyAnnotations,
     },

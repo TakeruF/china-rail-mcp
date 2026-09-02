@@ -27,7 +27,8 @@ export function filterJourneys(journeys: TrainJourney[], filters: QueryFilters):
         timeToMinutes(j.departureTime) >= timeToMinutes(filters.departAfter)) &&
       (!filters.departBefore ||
         timeToMinutes(j.departureTime) <= timeToMinutes(filters.departBefore)) &&
-      (!filters.trainTypes || filters.trainTypes.includes(j.trainType)) &&
+      (!filters.trainTypes ||
+        filters.trainTypes.some((trainType) => trainType.toUpperCase() === j.trainType)) &&
       (!filters.seatClass || j.seatClasses.some((s) => s.seatClass === filters.seatClass)) &&
       (!filters.onlyAvailable ||
         j.seatClasses.some(
@@ -70,6 +71,7 @@ export function toolError(error: unknown): {
           code: e.code,
           message: e.message,
           ...(e.candidates ? { candidates: e.candidates } : {}),
+          ...(e.details ? { details: e.details } : {}),
         }),
       },
     ],

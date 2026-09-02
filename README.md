@@ -8,7 +8,7 @@ automation, or ticket-sniping functionality.
 
 ## Current live-data status
 
-As verified on 2026-08-25, the official 12306 station, timetable, remaining-ticket,
+As most recently re-verified on 2026-09-03, the official 12306 station, timetable, remaining-ticket,
 fare, train-number, and stop-sequence routes work without login. Timetable queries
 require short-lived anonymous cookies issued by the official query page. The server
 keeps those cookies only in process memory, never accepts user/account cookies, and
@@ -100,6 +100,7 @@ Example prompts:
 - What 12306 station code corresponds to Shanghai Hongqiao?
 - Search stations matching 杭州东.
 - Show trains from 上海虹桥 to 杭州东 three days from now.
+- Show only D trains from 上海虹桥 to 宁波 three days from now.
 - Show the complete stop sequence for G1 on a specified date.
 - What public-data capabilities does the configured provider currently support?
 
@@ -107,6 +108,12 @@ Example prompts:
 `limit` (1-50) and `offset`; filters and comparison sorting are applied before paging. Their
 response includes `total`, `returned`, `hasMore`, `nextOffset`, and `journeys`, so clients can
 continue without requesting an unbounded payload.
+
+Train-type filters are case-insensitive and accept `G`, `D`, `C`, `S`, `Z`, `T`, `K`, `L`, `Y`,
+and `OTHER`. Each journey includes both the normalized `trainType` and a Chinese
+`trainTypeLabel`; an unrecognized or numeric prefix is classified as `OTHER` while retaining its
+original prefix in `upstreamTrainType`. Seat classes keep `dynamic_sleeper` (`动卧`),
+`advanced_soft_sleeper` (`高级软卧`), and `soft_sleeper` (`软卧`) distinct.
 
 ## Architecture
 
@@ -116,10 +123,21 @@ parsing, a single-flight anonymous-session initializer, exact station filtering,
 behavior, and a station-metadata cache; domain types remain provider-neutral.
 
 All travel dates (`YYYY-MM-DD`) and timetable times are interpreted as China Standard Time
-(`Asia/Shanghai`), never the host computer timezone. Ticket queries are accepted only for the
-current official 15-day presale window (today plus 14 days); dates outside it return
-`DATE_OUTSIDE_QUERY_WINDOW` without contacting 12306. Fares are normalized to CNY;
-availability includes both a normalized state and the original upstream value.
+(`Asia/Shanghai`), never the host computer timezone. Route, fare, and availability queries are
+accepted only for the current official 15-day ticket-query window (today plus 14 days). A future
+date outside it returns `DATE_OUTSIDE_TICKET_WINDOW` without contacting the ticket endpoint,
+including `expectedSalesOpenDate`/`retryFrom` metadata and a reminder that a timetable may already
+be available. Past dates continue to return `DATE_OUTSIDE_QUERY_WINDOW`. Fares are normalized to
+CNY; availability includes both a normalized state and the original upstream value.
+
+`get_train_details` uses the separate official train-number and stop endpoints. If 12306 has
+already published the requested date-specific timetable, it can therefore return the stop
+sequence before ticket sales open, with `timetableStatus: "published"`,
+`bookingStatus: "not_on_sale"`, `availability: null`, and the expected sales-opening date. If a
+future date is outside the ticket window and the official train search returns no exact match, the
+tool returns `TIMETABLE_NOT_YET_PUBLISHED` instead of claiming that the train is cancelled or does
+not operate. The timetable publication horizon is undocumented and must not be assumed to be
+fixed.
 
 ## Provider limits and freshness
 

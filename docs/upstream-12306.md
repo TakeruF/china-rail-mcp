@@ -1,6 +1,6 @@
 # 12306 Upstream Interfaces
 
-Observation date: 2026-08-25. All requests below were low-frequency, read-only HTTPS GET
+Initial observation date: 2026-08-25; D-train coverage was rechecked on 2026-09-03. All requests below were low-frequency, read-only HTTPS GET
 requests to official `12306.cn` domains. No login, user/account cookie, CAPTCHA handling,
 browser automation, request-signature workaround, booking, or payment was used. Results are
 point-in-time observations, not a stability promise or a supported developer API.
@@ -46,9 +46,15 @@ recorded.
 - Observed response: HTTP 200 JSON, `status: true`, 369 city-area rows and 11 station codes
 - Exact-pair result: 118 rows whose actual departure and arrival codes were `AOH → HGH`
 
+The endpoint name `queryG` does not restrict results to G trains. On 2026-09-03, a query for
+2026-09-06 from `上海虹桥 (AOH)` to `宁波 (NGH)` returned 33 exact-pair journeys: 21 G trains and
+12 D trains. D3145 included first- and second-class fares and availability in the same row shape.
+
 12306's official presale-period page reported a 15-day window including today on 2026-08-30.
-The provider validates this window in `Asia/Shanghai` before contacting the ticket endpoint and
-returns `DATE_OUTSIDE_QUERY_WINDOW` for past dates or dates more than 14 days ahead.
+The provider validates this window in `Asia/Shanghai` before contacting the ticket endpoint.
+Past dates return `DATE_OUTSIDE_QUERY_WINDOW`; dates more than 14 days ahead return
+`DATE_OUTSIDE_TICKET_WINDOW` with the expected sales-opening date and do not contact the ticket
+endpoint.
 
 The official response broadens a query to other stations in the same cities. It included, for
 example, Shanghai South, Shanghai Songjiang, Hangzhou, Hangzhou West, and Hangzhou South. The
@@ -72,6 +78,9 @@ values alongside normalized states:
 | 29        | Hard seat       |
 | 26        | Standing        |
 
+The normalized model keeps advanced soft sleeper, D-train sleeper, and soft sleeper separate as
+`advanced_soft_sleeper`, `dynamic_sleeper`, and `soft_sleeper` respectively.
+
 Known values such as `有`, `无`, and numeric counts are normalized. Unknown values remain
 `unknown` with the exact upstream value; they are never guessed.
 
@@ -88,6 +97,14 @@ The train-search endpoint performs prefix matching, so the provider filters
 `station_train_code` for an exact case-insensitive match before using an internal `train_no`.
 On the observation date, G1 resolved successfully and its stop query returned seven stops from
 Beijing South to Shanghai Hongqiao, including arrival, departure, and stopover times.
+On 2026-09-03, D3145 also resolved successfully for 2026-09-06 and returned its 26-stop sequence.
+
+The train-number endpoint can publish a date-specific timetable before that date enters the
+ticket-query window. In that case `get_train_details` returns the official stops with
+`bookingStatus: "not_on_sale"` and no availability claim. An empty exact-train result outside the
+ticket window is classified as `TIMETABLE_NOT_YET_PUBLISHED`, not as cancellation or confirmed
+non-operation. 12306 does not document a fixed timetable-publication horizon, so the provider does
+not hard-code one.
 
 ## Fares
 
@@ -107,6 +124,7 @@ the official detail route:
 | G4917 | HTTP 200      | 217 ms           | CNY 83.0                  |
 | G7541 | HTTP 200      | 311 ms           | CNY 57.0                  |
 | G1321 | HTTP 200      | 229 ms           | CNY 76.0                  |
+| D3145 | Search row    | N/A              | CNY 116.0                 |
 
 The official page describes displayed prices as reference values and says the payment-confirmed
 price is authoritative. The MCP remains read-only and performs no payment or booking step.

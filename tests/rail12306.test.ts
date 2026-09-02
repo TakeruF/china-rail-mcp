@@ -9,10 +9,17 @@ import {
   parseTrainStops,
 } from '../src/providers/rail12306.js';
 import { filterJourneys, paginateJourneys } from '../src/tools/common.js';
-import { assertQueryableTravelDate, assertTravelDate } from '../src/utils/date.js';
+import {
+  assertQueryableTravelDate,
+  assertTravelDate,
+  ticketQueryWindow,
+} from '../src/utils/date.js';
 import { normalizeAvailability, normalizeSeatClass, parseFare } from '../src/utils/seat.js';
+import { classifyTrainNumber } from '../src/utils/train.js';
 const stations = parseStationScript(readFileSync('fixtures/stations.js', 'utf8'));
 const trains = parseTrainResults(JSON.parse(readFileSync('fixtures/left-ticket.json', 'utf8')));
+const dTicketPayload = readFileSync('fixtures/left-ticket-d.json', 'utf8');
+const dTrains = parseTrainResults(JSON.parse(dTicketPayload));
 describe('12306 parsing', () => {
   it('parses station code records', () =>
     expect(stations).toContainEqual(
@@ -22,6 +29,27 @@ describe('12306 parsing', () => {
     expect(() => parseStationScript('nope')).toThrow(RailError));
   it('parses train rows and duration', () =>
     expect(trains[0]).toMatchObject({ trainNumber: 'G7541', durationMinutes: 59 }));
+  it('parses an official D-train row and its fares and availability', () =>
+    expect(dTrains[0]).toMatchObject({
+      trainNumber: 'D3145',
+      trainType: 'D',
+      trainTypeLabel: '动车组列车',
+      departureStation: '上海虹桥',
+      arrivalStation: '宁波',
+      durationMinutes: 156,
+      seatClasses: expect.arrayContaining([
+        expect.objectContaining({
+          seatClass: 'first_class',
+          fare: { amount: 184, currency: 'CNY' },
+          availability: expect.objectContaining({ count: 9 }),
+        }),
+        expect.objectContaining({
+          seatClass: 'second_class',
+          fare: { amount: 116, currency: 'CNY' },
+          availability: expect.objectContaining({ status: 'available' }),
+        }),
+      ]),
+    }));
   it('maps the live 12306 seat indexes and compact fares', () => {
     expect(trains[0]?.seatClasses).toEqual(
       expect.arrayContaining([
@@ -43,6 +71,30 @@ describe('12306 parsing', () => {
         expect.objectContaining({
           seatClass: 'standing',
           availability: expect.objectContaining({ status: 'unavailable' }),
+        }),
+      ]),
+    );
+  });
+  it('keeps advanced soft sleeper and D-train sleeper distinct', () => {
+    const payload = JSON.parse(dTicketPayload) as {
+      data: { result: string[]; map: Record<string, string> };
+    };
+    const fields = payload.data.result[0]!.split('|');
+    fields[21] = '有';
+    fields[33] = '2';
+    fields[39] = '6010000000F005000000';
+    payload.data.result[0] = fields.join('|');
+
+    expect(parseTrainResults(payload)[0]?.seatClasses).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          seatClass: 'advanced_soft_sleeper',
+          fare: { amount: 100, currency: 'CNY' },
+        }),
+        expect.objectContaining({
+          seatClass: 'dynamic_sleeper',
+          fare: { amount: 50, currency: 'CNY' },
+          availability: expect.objectContaining({ count: 2 }),
         }),
       ]),
     );
@@ -72,8 +124,25 @@ describe('12306 parsing', () => {
     expect(() => parseTrainResults({ data: {} })).toThrow(RailError));
 });
 describe('normalization', () => {
+  it('classifies major Chinese train prefixes and preserves unknown prefixes', () => {
+    expect(['G', 'D', 'C', 'S', 'Z', 'T', 'K', 'L', 'Y'].map(classifyTrainNumber)).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ trainType: 'G', trainTypeLabel: '高速动车组列车' }),
+        expect.objectContaining({ trainType: 'D', trainTypeLabel: '动车组列车' }),
+        expect.objectContaining({ trainType: 'K', trainTypeLabel: '快速列车' }),
+      ]),
+    );
+    expect(classifyTrainNumber('1234')).toEqual({
+      trainType: 'OTHER',
+      trainTypeLabel: '其他列车',
+      upstreamTrainType: '1',
+    });
+  });
   it('normalizes seats and availability', () => {
     expect(normalizeSeatClass('二等座')).toBe('second_class');
+    expect(normalizeSeatClass('高级软卧')).toBe('advanced_soft_sleeper');
+    expect(normalizeSeatClass('动卧')).toBe('dynamic_sleeper');
+    expect(normalizeSeatClass('软卧')).toBe('soft_sleeper');
     expect(normalizeAvailability('有').status).toBe('available');
     expect(normalizeAvailability('0')).toMatchObject({ status: 'unavailable', count: 0 });
     expect(normalizeAvailability('候补').status).toBe('waitlist');
@@ -89,11 +158,28 @@ describe('normalization', () => {
     const now = new Date('2026-08-30T00:00:00+08:00');
     expect(() => assertQueryableTravelDate('2026-08-30', now)).not.toThrow();
     expect(() => assertQueryableTravelDate('2026-09-13', now)).not.toThrow();
-    for (const date of ['2026-08-29', '2026-09-14']) {
-      expect(() => assertQueryableTravelDate(date, now)).toThrowError(
-        expect.objectContaining({ code: 'DATE_OUTSIDE_QUERY_WINDOW' }),
-      );
-    }
+    expect(() => assertQueryableTravelDate('2026-08-29', now)).toThrowError(
+      expect.objectContaining({ code: 'DATE_OUTSIDE_QUERY_WINDOW' }),
+    );
+    expect(() => assertQueryableTravelDate('2026-09-14', now)).toThrowError(
+      expect.objectContaining({
+        code: 'DATE_OUTSIDE_TICKET_WINDOW',
+        details: expect.objectContaining({
+          ticketStatus: 'not_on_sale',
+          expectedSalesOpenDate: '2026-08-31',
+          retryFrom: '2026-08-31',
+          timetableMayBeAvailable: true,
+          suggestedTool: 'get_train_details',
+          requiresTrainNumber: true,
+        }),
+      }),
+    );
+    expect(ticketQueryWindow('2026-09-14', now)).toMatchObject({
+      today: '2026-08-30',
+      lastQueryableDate: '2026-09-13',
+      daysAhead: 15,
+      status: 'not_on_sale',
+    });
   });
 });
 describe('filtering', () => {
@@ -101,6 +187,9 @@ describe('filtering', () => {
     expect(
       filterJourneys(trains, { trainTypes: ['G'], departAfter: '05:00', onlyAvailable: true }),
     ).toHaveLength(1));
+
+  it('filters D trains by their normalized prefix', () =>
+    expect(filterJourneys(dTrains, { trainTypes: ['d'] })).toHaveLength(1));
 
   it('paginates a filtered result with stable continuation metadata', () => {
     const filtered = filterJourneys(trains, { trainTypes: ['G'] });
@@ -243,8 +332,11 @@ describe('provider capabilities', () => {
     await expect(
       provider.searchTrains({ from: '深圳北', to: '广州南', date: '2026-09-19' }),
     ).rejects.toMatchObject({
-      code: 'DATE_OUTSIDE_QUERY_WINDOW',
-      message: expect.stringContaining('2026-09-13'),
+      code: 'DATE_OUTSIDE_TICKET_WINDOW',
+      details: expect.objectContaining({
+        expectedSalesOpenDate: '2026-09-05',
+        retryFrom: '2026-09-05',
+      }),
     });
   });
 
@@ -291,9 +383,170 @@ describe('provider capabilities', () => {
       provider.getTrainDetails({ trainNumber: 'G7541', date: '2026-08-30' }),
     ).resolves.toMatchObject({
       trainNumber: 'G7541',
+      timetableStatus: 'published',
+      bookingStatus: 'not_checked',
+      availability: null,
       stops: [
         { order: 1, station: '上海虹桥', arrivalTime: null, departureTime: '05:52' },
         { order: 2, station: '杭州东', stopDurationMinutes: 2 },
+      ],
+    });
+  });
+
+  it('returns a published timetable before tickets enter the query window', async () => {
+    const provider = new Rail12306Provider(
+      async (input) => {
+        const url = String(input);
+        if (url.startsWith('https://search.12306.cn/'))
+          return Response.json({
+            status: true,
+            data: [
+              {
+                date: '20260920',
+                station_train_code: 'G1',
+                train_no: '24000000G10L',
+              },
+            ],
+          });
+        if (url.includes('czxx/queryByTrainNo'))
+          return Response.json({
+            status: true,
+            data: {
+              data: [
+                {
+                  station_no: '01',
+                  station_name: '北京南',
+                  arrive_time: '----',
+                  start_time: '06:30',
+                  stopover_time: '----',
+                },
+              ],
+            },
+          });
+        throw new Error(`Unexpected URL: ${url}`);
+      },
+      () => new Date('2026-09-03T00:00:00+08:00'),
+    );
+
+    await expect(
+      provider.getTrainDetails({ trainNumber: 'G1', date: '2026-09-20' }),
+    ).resolves.toMatchObject({
+      timetableStatus: 'published',
+      bookingStatus: 'not_on_sale',
+      availability: null,
+      expectedSalesOpenDate: '2026-09-06',
+    });
+  });
+
+  it('does not mislabel an unpublished future timetable as a cancelled train', async () => {
+    const provider = new Rail12306Provider(
+      async (input) => {
+        const url = String(input);
+        if (url.startsWith('https://search.12306.cn/'))
+          return Response.json({ status: true, data: [] });
+        throw new Error(`Unexpected URL: ${url}`);
+      },
+      () => new Date('2026-09-03T00:00:00+08:00'),
+    );
+
+    await expect(
+      provider.getTrainDetails({ trainNumber: 'G1', date: '2026-10-01' }),
+    ).rejects.toMatchObject({
+      code: 'TIMETABLE_NOT_YET_PUBLISHED',
+      message: expect.stringContaining('does not mean the train is cancelled'),
+      details: expect.objectContaining({
+        timetableStatus: 'not_yet_published',
+        ticketStatus: 'not_on_sale',
+        expectedSalesOpenDate: '2026-09-17',
+        retryFrom: '2026-09-17',
+      }),
+    });
+  });
+
+  it('does not mislabel a malformed train-search response as an unpublished timetable', async () => {
+    const provider = new Rail12306Provider(
+      async (input) => {
+        const url = String(input);
+        if (url.startsWith('https://search.12306.cn/')) return Response.json({ status: false });
+        throw new Error(`Unexpected URL: ${url}`);
+      },
+      () => new Date('2026-09-03T00:00:00+08:00'),
+    );
+
+    await expect(
+      provider.getTrainDetails({ trainNumber: 'G1', date: '2026-10-01' }),
+    ).rejects.toMatchObject({ code: 'UPSTREAM_RESPONSE_CHANGED' });
+  });
+
+  it('supports D-train search, availability, and stop details end to end', async () => {
+    const provider = new Rail12306Provider(
+      async (input) => {
+        const url = String(input);
+        if (url.includes('station_name.js')) return new Response(stationScript);
+        if (url.includes('leftTicket/init')) return sessionResponse();
+        if (url.includes('leftTicket/queryG'))
+          return new Response(dTicketPayload, { headers: { 'content-type': 'application/json' } });
+        if (url.startsWith('https://search.12306.cn/'))
+          return Response.json({
+            status: true,
+            data: [
+              {
+                date: '20260906',
+                station_train_code: 'D3145',
+                train_no: '5l000D314505',
+              },
+            ],
+          });
+        if (url.includes('czxx/queryByTrainNo'))
+          return Response.json({
+            status: true,
+            data: {
+              data: [
+                {
+                  station_no: '01',
+                  station_name: '上海虹桥',
+                  arrive_time: '----',
+                  start_time: '06:27',
+                  stopover_time: '----',
+                },
+                {
+                  station_no: '09',
+                  station_name: '宁波',
+                  arrive_time: '09:03',
+                  start_time: '09:06',
+                  stopover_time: '3分钟',
+                },
+              ],
+            },
+          });
+        throw new Error(`Unexpected URL: ${url}`);
+      },
+      () => new Date('2026-09-03T00:00:00+08:00'),
+    );
+
+    await expect(
+      provider.searchTrains({ from: 'AOH', to: 'NGH', date: '2026-09-06' }),
+    ).resolves.toEqual([expect.objectContaining({ trainNumber: 'D3145', trainType: 'D' })]);
+    await expect(
+      provider.getAvailability({
+        from: 'AOH',
+        to: 'NGH',
+        trainNumber: 'D3145',
+        date: '2026-09-06',
+      }),
+    ).resolves.toMatchObject({
+      seats: {
+        first_class: { status: 'available', count: 9 },
+        second_class: { status: 'available' },
+      },
+    });
+    await expect(
+      provider.getTrainDetails({ trainNumber: 'D3145', date: '2026-09-06' }),
+    ).resolves.toMatchObject({
+      trainNumber: 'D3145',
+      stops: [
+        { station: '上海虹桥', departureTime: '06:27' },
+        { station: '宁波', arrivalTime: '09:03', stopDurationMinutes: 3 },
       ],
     });
   });

@@ -2,6 +2,14 @@ import { RailError } from '../errors.js';
 
 export const QUERY_WINDOW_DAYS = 15;
 
+export interface TicketQueryWindow {
+  today: string;
+  lastQueryableDate: string;
+  expectedSalesOpenDate: string;
+  daysAhead: number;
+  status: 'sales_closed' | 'queryable' | 'not_on_sale';
+}
+
 export function assertTravelDate(date: string): void {
   const parts = parseDateParts(date);
   if (!parts || !isRealDate(parts))
@@ -9,17 +17,53 @@ export function assertTravelDate(date: string): void {
 }
 
 export function assertQueryableTravelDate(date: string, now = new Date()): void {
+  const window = ticketQueryWindow(date, now);
+  if (window.status === 'sales_closed') {
+    throw new RailError(
+      'DATE_OUTSIDE_QUERY_WINDOW',
+      `12306 currently accepts ticket queries from ${window.today} through ${window.lastQueryableDate} ` +
+        `(${QUERY_WINDOW_DAYS} days including today).`,
+      undefined,
+      {
+        requestedDate: date,
+        ticketStatus: window.status,
+        queryableFrom: window.today,
+        queryableThrough: window.lastQueryableDate,
+      },
+    );
+  }
+  if (window.status === 'not_on_sale')
+    throw new RailError(
+      'DATE_OUTSIDE_TICKET_WINDOW',
+      `Tickets for ${date} are not yet in the current 12306 query window. ` +
+        `The expected sales-opening date is ${window.expectedSalesOpenDate}; ` +
+        'the station-specific release time may vary.',
+      undefined,
+      {
+        requestedDate: date,
+        ticketStatus: window.status,
+        expectedSalesOpenDate: window.expectedSalesOpenDate,
+        retryFrom: window.expectedSalesOpenDate,
+        queryableThrough: window.lastQueryableDate,
+        timetableMayBeAvailable: true,
+        suggestedTool: 'get_train_details',
+        requiresTrainNumber: true,
+      },
+    );
+}
+
+export function ticketQueryWindow(date: string, now = new Date()): TicketQueryWindow {
   assertTravelDate(date);
   const today = chinaDate(now);
   const daysAhead = dayNumber(date) - dayNumber(today);
-  if (daysAhead < 0 || daysAhead >= QUERY_WINDOW_DAYS) {
-    const lastQueryableDate = addDays(today, QUERY_WINDOW_DAYS - 1);
-    throw new RailError(
-      'DATE_OUTSIDE_QUERY_WINDOW',
-      `12306 currently accepts ticket queries from ${today} through ${lastQueryableDate} ` +
-        `(${QUERY_WINDOW_DAYS} days including today).`,
-    );
-  }
+  return {
+    today,
+    lastQueryableDate: addDays(today, QUERY_WINDOW_DAYS - 1),
+    expectedSalesOpenDate: addDays(date, -(QUERY_WINDOW_DAYS - 1)),
+    daysAhead,
+    status:
+      daysAhead < 0 ? 'sales_closed' : daysAhead >= QUERY_WINDOW_DAYS ? 'not_on_sale' : 'queryable',
+  };
 }
 
 function parseDateParts(date: string): [number, number, number] | undefined {

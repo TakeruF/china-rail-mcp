@@ -3,7 +3,9 @@ export type RailErrorCode =
   | 'AMBIGUOUS_STATION'
   | 'INVALID_DATE'
   | 'DATE_OUTSIDE_QUERY_WINDOW'
+  | 'DATE_OUTSIDE_TICKET_WINDOW'
   | 'JOURNEY_NOT_FOUND'
+  | 'TIMETABLE_NOT_YET_PUBLISHED'
   | 'PROVIDER_CAPABILITY_UNAVAILABLE'
   | 'UPSTREAM_TEMPORARILY_UNAVAILABLE'
   | 'UPSTREAM_QUERY_REJECTED'
@@ -15,6 +17,7 @@ export class RailError extends Error {
     public readonly code: RailErrorCode,
     message: string,
     public readonly candidates?: string[],
+    public readonly details?: Record<string, unknown>,
   ) {
     super(message);
     this.name = 'RailError';

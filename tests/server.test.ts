@@ -15,6 +15,7 @@ const sourceJourneys: TrainJourney[] = Array.from({ length: 25 }, (_, index) => 
   arrivalTime: '23:59',
   durationMinutes: 30 + index,
   trainType: index % 2 === 0 ? 'G' : 'D',
+  trainTypeLabel: index % 2 === 0 ? '高速动车组列车' : '动车组列车',
   seatClasses: [],
   retrievedAt: '2026-08-25T00:00:00.000Z',
 }));
@@ -112,6 +113,22 @@ describe('MCP pagination', () => {
     ) as { total: number; journeys: TrainJourney[] };
     expect(result.total).toBe(13);
     expect(result.journeys.map((journey) => journey.trainNumber)).toEqual(['G5', 'G7', 'G9']);
+  });
+
+  it('normalizes lowercase train-type filters', async () => {
+    const result = parseTextResult(
+      await client.callTool({
+        name: 'search_trains',
+        arguments: {
+          from: 'AOH',
+          to: 'HGH',
+          date: '2026-08-30',
+          trainTypes: ['d'],
+        },
+      }),
+    ) as { total: number; journeys: TrainJourney[] };
+    expect(result.total).toBe(12);
+    expect(result.journeys.every((journey) => journey.trainType === 'D')).toBe(true);
   });
 
   it('rejects pages larger than 50 items', async () => {

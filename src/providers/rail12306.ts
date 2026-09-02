@@ -2,8 +2,9 @@ import { RailError } from '../errors.js';
 import type { Fare, SeatAvailability, SeatOffer } from '../domain/seat.js';
 import type { Station } from '../domain/station.js';
 import type { TrainDetails, TrainJourney, TrainStop } from '../domain/train.js';
-import { assertQueryableTravelDate, assertTravelDate } from '../utils/date.js';
+import { assertQueryableTravelDate, assertTravelDate, ticketQueryWindow } from '../utils/date.js';
 import { normalizeAvailability, normalizeSeatClass, parseFare } from '../utils/seat.js';
+import { classifyTrainNumber } from '../utils/train.js';
 import type {
   AvailabilityInput,
   RailProvider,
@@ -111,6 +112,7 @@ export class Rail12306Provider implements RailProvider {
 
   async getTrainDetails(input: TrainDetailsInput): Promise<TrainDetails> {
     assertTravelDate(input.date);
+    const ticketWindow = ticketQueryWindow(input.date, this.now());
     const searchUrl = new URL(TRAIN_SEARCH_URL);
     searchUrl.search = new URLSearchParams({
       keyword: input.trainNumber,
@@ -119,17 +121,38 @@ export class Rail12306Provider implements RailProvider {
     const searchPayload = await this.requestJson<TrainSearchPayload>(searchUrl, {
       headers: { Referer: 'https://www.12306.cn/' },
     });
+    if (searchPayload.status !== true || !Array.isArray(searchPayload.data))
+      throw new RailError(
+        'UPSTREAM_RESPONSE_CHANGED',
+        '12306 train search did not return a valid result list.',
+      );
     const exact = searchPayload.data?.find(
       (train) =>
         train.station_train_code?.toUpperCase() === input.trainNumber.toUpperCase() &&
         train.date === input.date.replaceAll('-', '') &&
         train.train_no,
     );
-    if (!exact?.train_no)
+    if (!exact?.train_no) {
+      if (ticketWindow.status === 'not_on_sale')
+        throw new RailError(
+          'TIMETABLE_NOT_YET_PUBLISHED',
+          `12306 has not published a date-specific timetable for ${input.trainNumber} on ${input.date}. ` +
+            'This does not mean the train is cancelled or will not operate.',
+          undefined,
+          {
+            trainNumber: input.trainNumber,
+            requestedDate: input.date,
+            timetableStatus: 'not_yet_published',
+            ticketStatus: ticketWindow.status,
+            expectedSalesOpenDate: ticketWindow.expectedSalesOpenDate,
+            retryFrom: ticketWindow.expectedSalesOpenDate,
+          },
+        );
       throw new RailError(
         'JOURNEY_NOT_FOUND',
         `No official train exactly matches ${input.trainNumber} on ${input.date}.`,
       );
+    }
 
     const stopsUrl = new URL(TRAIN_STOPS_URL);
     stopsUrl.search = new URLSearchParams({
@@ -141,7 +164,12 @@ export class Rail12306Provider implements RailProvider {
     const stopPayload = await this.requestJson<StopPayload>(stopsUrl, {
       headers: { Referer: `${OTN_BASE}/queryTrainInfo/init` },
     });
-    return parseTrainStops(stopPayload, input.trainNumber, input.date);
+    return parseTrainStops(stopPayload, input.trainNumber, input.date, {
+      bookingStatus: ticketWindow.status === 'queryable' ? 'not_checked' : ticketWindow.status,
+      ...(ticketWindow.status === 'not_on_sale'
+        ? { expectedSalesOpenDate: ticketWindow.expectedSalesOpenDate }
+        : {}),
+    });
   }
 
   async getAvailability(input: AvailabilityInput): Promise<SeatAvailability> {
@@ -434,7 +462,7 @@ export function parseTrainResults(
         departureTime: fields[8],
         arrivalTime: fields[9],
         durationMinutes: parseDurationStrict(fields[10]),
-        trainType: fields[3].charAt(0),
+        ...classifyTrainNumber(fields[3]),
         seatClasses: offers,
         retrievedAt,
       },
@@ -453,7 +481,14 @@ export function parseCompactFares(value: string): Map<string, Fare> {
   return fares;
 }
 
-export function parseTrainStops(payload: unknown, trainNumber: string, date: string): TrainDetails {
+export function parseTrainStops(
+  payload: unknown,
+  trainNumber: string,
+  date: string,
+  ticketing: Pick<TrainDetails, 'bookingStatus' | 'expectedSalesOpenDate'> = {
+    bookingStatus: 'not_checked',
+  },
+): TrainDetails {
   const root = payload as StopPayload;
   if (!Array.isArray(root.data?.data))
     throw new RailError(
@@ -478,7 +513,18 @@ export function parseTrainStops(payload: unknown, trainNumber: string, date: str
       stopDurationMinutes: parseStopDuration(stop.stopover_time),
     };
   });
-  return { trainNumber, date, stops, retrievedAt: new Date().toISOString() };
+  return {
+    trainNumber,
+    date,
+    timetableStatus: 'published',
+    bookingStatus: ticketing.bookingStatus,
+    availability: null,
+    ...(ticketing.expectedSalesOpenDate
+      ? { expectedSalesOpenDate: ticketing.expectedSalesOpenDate }
+      : {}),
+    stops,
+    retrievedAt: new Date().toISOString(),
+  };
 }
 
 function normalizeStopTime(value: string | undefined): string | null {

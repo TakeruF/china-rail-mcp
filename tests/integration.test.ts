@@ -49,6 +49,29 @@ integration('official 12306 public integration', () => {
     expect(details.trainNumber).toBe(trainNumber);
     expect(details.stops.length).toBeGreaterThan(1);
   }, 20_000);
+
+  it('queries a D train with fares, availability, and its official stop sequence', async () => {
+    const dJourneys = await provider.searchTrains({
+      from: 'AOH',
+      to: 'NGH',
+      date: travelDate,
+    });
+    const dJourney = dJourneys.find((journey) => journey.trainType === 'D');
+    expect(dJourney).toMatchObject({
+      trainType: 'D',
+      trainTypeLabel: '动车组列车',
+      departureStation: '上海虹桥',
+      arrivalStation: '宁波',
+    });
+    expect(dJourney?.seatClasses.some((seat) => seat.availability && seat.fare)).toBe(true);
+
+    const details = await provider.getTrainDetails({
+      trainNumber: dJourney!.trainNumber,
+      date: travelDate,
+    });
+    expect(details.trainNumber).toBe(dJourney!.trainNumber);
+    expect(details.stops.length).toBeGreaterThan(1);
+  }, 25_000);
 });
 
 function formatChinaDate(date: Date): string {
