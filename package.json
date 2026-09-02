@@ -18,8 +18,12 @@
   },
   "files": [
     "dist",
+    "docs/SELF_HOSTING.md",
+    "docs/SELF_HOSTING.en.md",
+    "scripts",
     "server.json",
     "README.md",
+    "README.en.md",
     "LICENSE",
     "SECURITY.md"
   ],
@@ -34,13 +38,21 @@
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/index.js",
+    "doctor": "node scripts/doctor.mjs",
+    "generate:secret": "node scripts/generate-secret.mjs",
+    "smoke:http": "node scripts/smoke-http.mjs",
+    "smoke:stdio": "node scripts/smoke-stdio.mjs",
     "lint": "eslint .",
     "format": "prettier --check .",
     "format:write": "prettier --write .",
     "typecheck": "tsc --noEmit && tsc -p tsconfig.edgeone.json",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "RUN_LIVE_12306=1 vitest run tests/integration.test.ts"
+    "test:integration": "cross-env RUN_LIVE_12306=1 vitest run tests/integration.test.ts",
+    "verify": "npm run doctor && npm run lint && npm run typecheck && npm test && npm run build && npm run smoke:stdio && npm run format && npm audit",
+    "verify:live": "npm run verify && npm run test:integration",
+    "package:check": "npm pack --dry-run",
+    "prepack": "npm run build"
   },
   "engines": {
     "node": ">=20"
@@ -52,6 +64,7 @@
   "devDependencies": {
     "@eslint/js": "^9.39.1",
     "@types/node": "^22.15.3",
+    "cross-env": "^10.0.0",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^16.5.0",

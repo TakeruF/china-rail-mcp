@@ -1,180 +1,210 @@
 # China Rail MCP
 
-China Rail MCP is an unofficial, read-only MCP server for querying Chinese railway
-information.
+**简体中文** | [English](README.en.md)
 
-This project is not affiliated with, endorsed by, or sponsored by China Railway or 12306. It does not provide ticket purchasing, booking automation, account login
-automation, or ticket-sniping functionality.
+China Rail MCP 是一个非官方、只读的 MCP 服务器，用于查询中国铁路信息。
 
-## Current live-data status
+本项目与中国国家铁路集团或 12306 无隶属、认可或赞助关系，不提供购票、自动登录、
+候补提交、抢票或支付功能。
 
-As most recently re-verified on 2026-09-03, the official 12306 station, timetable, remaining-ticket,
-fare, train-number, and stop-sequence routes work without login. Timetable queries
-require short-lived anonymous cookies issued by the official query page. The server
-keeps those cookies only in process memory, never accepts user/account cookies, and
-never persists or returns cookie values.
+## 快速开始：克隆后供自己使用
 
-| Capability        | Status    | Freshness/caching                                         |
-| ----------------- | --------- | --------------------------------------------------------- |
-| Station search    | Supported | Official station asset; in-process cache up to 24 hours   |
-| Timetable         | Supported | Live official query; exact station-code results only      |
-| Train stops       | Supported | Live official train-number and stop-sequence query        |
-| Fares             | Supported | Current compact fare data from the official ticket result |
-| Seat availability | Supported | Live official result; not cached as current               |
-
-See [docs/upstream-12306.md](docs/upstream-12306.md) for dated, live-upstream
-observations and failure modes. All dates and timetable times are China Standard
-Time (`Asia/Shanghai`). Public endpoints are undocumented; verify important travel
-information with official channels.
-
-## Scope
-
-China Rail MCP exposes public railway data to MCP-compatible clients such as Codex, Claude
-Desktop, and ChatGPT integrations. It is deliberately read-only: it does **not** log in,
-accept user cookies, handle SMS or CAPTCHAs, store identity data, book tickets, submit
-waitlists, snatch tickets, make payments, or change/cancel bookings. Anonymous cookies from
-the official query page are memory-only and expire from the provider after ten minutes.
-
-## Install and run
-
-Requires Node.js 20 or later.
+需要 Git、Node.js 20 或更高版本，以及 npm 10 或更高版本。使用本地 stdio 模式时，
+不需要 12306 账号、Cookie、密钥或 `.env` 文件。
 
 ```sh
-npm install
-npm run build
+git clone https://github.com/TakeruF/china-rail-mcp.git
+cd china-rail-mcp
+npm ci
+npm run verify
 npm start
 ```
 
-After publication, the package executable will be usable as `npx china-rail-mcp`.
+`npm run verify` 会离线检查运行环境、代码规范、类型、基于固定样本数据的测试、构建、
+格式、生产依赖安全审计，并实际执行一次 stdio MCP 初始化。它不会访问 12306。
 
-For a local MCP client, configure stdio (adjust the absolute path):
+`npm start` 通过标准输入/输出等待 MCP 客户端连接，因此正常情况下不会打印启动页面。
+如需额外验证当前 12306 公共接口，请运行：
+
+```sh
+npm run verify:live
+```
+
+实时验证依赖网络和上游服务的当前状态，无法在离线环境下重复执行。
+
+在 MCP 客户端中填写仓库的绝对路径：
 
 ```json
 {
   "mcpServers": {
     "china-rail": {
       "command": "node",
-      "args": ["/absolute/path/to/china-rail-mcp/dist/index.js"]
+      "args": ["/你的绝对路径/china-rail-mcp/dist/index.js"]
     }
   }
 }
 ```
 
-Development commands: `npm run dev`, `npm run lint`, `npm run typecheck`, `npm test`, and
-`npm run build`. `npm run test:integration` is opt-in and is never run by CI.
+也可以使用 Docker，避免依赖本机 Node.js 环境：
 
-After the npm package is published, clients can start it without a checkout:
+```sh
+docker build -t china-rail-mcp:local .
+```
+
+```json
+{
+  "mcpServers": {
+    "china-rail": {
+      "command": "docker",
+      "args": ["run", "--interactive", "--rm", "china-rail-mcp:local"]
+    }
+  }
+}
+```
+
+如果客户端必须连接公网 HTTPS 地址，可部署到自己的 Vercel 项目，并使用每位部署者
+独有的 `MCP_HTTP_BEARER_TOKEN` 保护访问。完整步骤、端点验证和 ChatGPT
+开发者模式配置请参阅[自托管指南](docs/SELF_HOSTING.md)。
+
+## 当前实时数据状态
+
+最近一次于 2026-09-03 重新验证时，12306 的车站、时刻表、余票、票价、车次和
+经停站公共查询可在不登录的情况下使用。时刻表查询需要由 12306 查询页面签发的
+短期匿名 Cookie；本服务器仅将其保存在进程内存中，不接受用户或账号 Cookie，也不会
+持久化或返回 Cookie 值。
+
+| 功能     | 状态 | 时效与缓存                             |
+| -------- | ---- | -------------------------------------- |
+| 车站搜索 | 支持 | 12306 车站资源；进程内最多缓存 24 小时 |
+| 时刻表   | 支持 | 实时公共查询；仅返回精确车站代码结果   |
+| 经停站   | 支持 | 实时车次及经停站查询                   |
+| 票价     | 支持 | 当前查询结果中的参考票价               |
+| 余票     | 支持 | 实时查询结果；不缓存为“当前余票”       |
+
+带日期的上游观测和故障模式见
+[docs/upstream-12306.md](docs/upstream-12306.md)（英文）。所有日期和时刻均按
+中国标准时间（`Asia/Shanghai`）解释。公共接口没有正式文档，重要出行信息请以
+官方渠道为准。
+
+## 功能边界
+
+China Rail MCP 向 Codex、Claude Desktop、ChatGPT 集成等兼容 MCP 的客户端提供
+公共铁路数据。它严格保持只读，不会：
+
+- 登录 12306 或接收用户 Cookie；
+- 处理短信、验证码或身份信息；
+- 购票、候补、抢票、支付、改签或退票；
+- 后台轮询、批量采集或规避上游限流。
+
+来自 12306 查询页面的匿名 Cookie 仅保存在内存中，上游通常会在十分钟后使其失效。
+
+## 可用工具
+
+| 工具                  | 用途                                                    |
+| --------------------- | ------------------------------------------------------- |
+| `get_provider_status` | 返回已验证能力和匿名会话安全策略                        |
+| `search_stations`     | 搜索车站及其 12306 代码；不会把一座城市静默当成单一车站 |
+| `search_trains`       | 分页返回精确站点间的时刻、票价和余票                    |
+| `get_train_details`   | 按精确车次返回完整经停站顺序                            |
+| `get_availability`    | 返回指定日期、车次和站点区间的标准化余票                |
+| `compare_trains`      | 筛选并排序分页行程；不作主观推荐                        |
+
+示例提问：
+
+- 上海虹桥站对应的 12306 车站代码是什么？
+- 搜索名称中包含“杭州东”的车站。
+- 查询三天后从上海虹桥到杭州东的车次。
+- 只显示三天后从上海虹桥到宁波的 D 字头车次。
+- 查询指定日期 G1 次列车的完整经停站。
+- 当前数据提供方支持哪些公共数据能力？
+
+`search_trains` 默认返回 20 条，`compare_trains` 默认返回 10 条。两者均支持
+`limit`（1–50）和 `offset`，响应包含 `total`、`returned`、`hasMore`、
+`nextOffset` 和 `journeys`。
+
+车次类型筛选不区分大小写，支持 `G`、`D`、`C`、`S`、`Z`、`T`、
+`K`、`L`、`Y` 和 `OTHER`。席别类型会明确区分动卧、高级软卧和软卧。
+
+## 架构与日期规则
+
+`src/server.ts` 中的 MCP 适配层只依赖 `RailProvider` 接口。
+`Rail12306Provider` 负责公共接口解析、单次匿名会话初始化、精确车站过滤、
+超时/重试和车站元数据缓存，领域类型与具体数据提供方解耦。
+
+所有出行日期（`YYYY-MM-DD`）和时刻均使用中国标准时间，而不是宿主机时区。
+车次、票价和余票查询只接受当前 15 天售票查询窗口（今天起 14 天内）的日期。
+超出未来窗口时，会在访问余票接口前返回 `DATE_OUTSIDE_TICKET_WINDOW`，并附带
+`expectedSalesOpenDate` / `retryFrom`。过去日期返回
+`DATE_OUTSIDE_QUERY_WINDOW`。
+
+`get_train_details` 使用独立的车次和经停站接口。因此，如果 12306 已发布指定日期
+的时刻表，即使尚未开售，也可以返回经停站，并标记
+`timetableStatus: "published"`、`bookingStatus: "not_on_sale"` 和
+`availability: null`。时刻表发布周期没有公开的固定规则。
+
+## 上游限制与数据时效
+
+车站主数据最多缓存 24 小时；时刻表和余票不会被缓存为当前结果。匿名查询会话最多
+复用十分钟。网络错误和 5xx 错误最多进行一次临时重试。本服务器不会持续轮询、
+绕过限流，也不会跟随跳转到允许列表以外的地址。
+
+即使传入精确车站代码，12306 也可能返回同城其他车站。本项目会再次核对实际出发站和
+到达站代码，避免将“上海虹桥”扩大为所有上海车站。票价为参考值，重要出行和支付信息
+请通过官方渠道确认。
+
+本地 stdio 模式不需要密钥、遥测、用户 Cookie 或个人信息收集。私有 HTTP 部署只使用
+部署者自行设置的访问密钥。安全问题请通过 [SECURITY.md](SECURITY.md) 私下报告。
+
+## 开发与发布状态
+
+常用开发命令：
+
+```sh
+npm run dev
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:integration
+npm run package:check
+```
+
+`npm run test:integration` 会访问不断变化的外部服务，因此仅供手动执行，不在常规
+CI 中运行。
+
+npm 包尚未发布。发布后，客户端才可以在不克隆仓库的情况下运行：
 
 ```sh
 npx -y china-rail-mcp
 ```
 
-Its MCP Registry identity is `io.github.takeruf/china-rail-mcp`; `server.json` contains the
-matching package metadata.
+MCP Registry 标识为 `io.github.takeruf/china-rail-mcp`，`server.json` 已包含
+相应元数据。正式注册前仍需先公开发布 npm 包，并按照当时最新的 Registry 规范重新
+验证。发布和注册都不由安装或验证脚本自动执行。
 
 ### EdgeOne Makers
 
-The optional `cloud-functions/mcp.ts` entry exposes stateless Streamable HTTP at `/mcp`, and
-`cloud-functions/health.ts` exposes `/health`. Deploy it as an EdgeOne Makers Node.js Cloud
-Function and set the secret environment variable `MCP_HTTP_BEARER_TOKEN`; without that variable,
-the MCP route returns `503` rather than becoming anonymously callable. The same secret is the
-single-user connection password for the bundled OAuth 2.1 Authorization Code + PKCE flow used by
-ChatGPT custom apps. OAuth clients receive one-hour access tokens and renewable 30-day refresh
-tokens; the original connection password is submitted only to this deployment's `/authorize`
-route and is not stored by ChatGPT. Existing clients may continue to use the static bearer token.
-The official anonymous 12306 session remains process-memory-only and is never exposed to clients.
+可选入口 `cloud-functions/mcp.ts` 在 `/mcp` 提供无状态 Streamable HTTP，
+`cloud-functions/health.ts` 在 `/health` 提供健康检查。部署为 EdgeOne Makers
+Node.js 云函数时必须设置 `MCP_HTTP_BEARER_TOKEN`；未设置时 MCP 路由返回 `503`，
+不会匿名开放。该密钥也是 ChatGPT 自定义应用所用 OAuth 2.1 Authorization Code +
+PKCE 流程的个人连接密码。12306 匿名会话仍仅保存在进程内存中。
 
-## Tools
+## 可重复性边界
 
-| Tool                  | Purpose                                                                               |
-| --------------------- | ------------------------------------------------------------------------------------- |
-| `get_provider_status` | Return verified capabilities and the anonymous-session safety policy.                 |
-| `search_stations`     | Find stations and their 12306 codes. A city is never silently treated as one station. |
-| `search_trains`       | Return paginated exact-station timetables, fares, and remaining-ticket data.          |
-| `get_train_details`   | Resolve an exact train number and return its complete official stop sequence.         |
-| `get_availability`    | Return normalized availability for an exact station pair, train, and date.            |
-| `compare_trains`      | Filter/sort paginated journeys; it does not make subjective recommendations.          |
+锁文件、离线测试、构建产物、stdio 协议初始化和 Docker 运行环境可从仓库重复生成。
+实时车次、票价和余票不是确定性构建产物，它们取决于未公开的 12306 公共接口、当前
+售票窗口、网络连通性和上游限流。因此，本项目可以复现“相同软件和验证流程”，不能
+保证未来任何时刻都得到相同实时数据。
 
-Example prompts:
+此配置面向个人、低频、只读使用；它不包含面向公众的多用户认证、集中式日志或服务
+可用性承诺。
 
-- What 12306 station code corresponds to Shanghai Hongqiao?
-- Search stations matching 杭州东.
-- Show trains from 上海虹桥 to 杭州东 three days from now.
-- Show only D trains from 上海虹桥 to 宁波 three days from now.
-- Show the complete stop sequence for G1 on a specified date.
-- What public-data capabilities does the configured provider currently support?
+## 许可证
 
-`search_trains` returns 20 journeys by default and `compare_trains` returns 10. Both accept
-`limit` (1-50) and `offset`; filters and comparison sorting are applied before paging. Their
-response includes `total`, `returned`, `hasMore`, `nextOffset`, and `journeys`, so clients can
-continue without requesting an unbounded payload.
+MIT，详见 [LICENSE](LICENSE)。
 
-Train-type filters are case-insensitive and accept `G`, `D`, `C`, `S`, `Z`, `T`, `K`, `L`, `Y`,
-and `OTHER`. Each journey includes both the normalized `trainType` and a Chinese
-`trainTypeLabel`; an unrecognized or numeric prefix is classified as `OTHER` while retaining its
-original prefix in `upstreamTrainType`. Seat classes keep `dynamic_sleeper` (`动卧`),
-`advanced_soft_sleeper` (`高级软卧`), and `soft_sleeper` (`软卧`) distinct.
+## 免责声明
 
-## Architecture
-
-The MCP adapter in `src/server.ts` depends only on the `RailProvider` interface.
-`Rail12306Provider` explicitly advertises its capabilities and contains official-endpoint
-parsing, a single-flight anonymous-session initializer, exact station filtering, timeout/retry
-behavior, and a station-metadata cache; domain types remain provider-neutral.
-
-All travel dates (`YYYY-MM-DD`) and timetable times are interpreted as China Standard Time
-(`Asia/Shanghai`), never the host computer timezone. Route, fare, and availability queries are
-accepted only for the current official 15-day ticket-query window (today plus 14 days). A future
-date outside it returns `DATE_OUTSIDE_TICKET_WINDOW` without contacting the ticket endpoint,
-including `expectedSalesOpenDate`/`retryFrom` metadata and a reminder that a timetable may already
-be available. Past dates continue to return `DATE_OUTSIDE_QUERY_WINDOW`. Fares are normalized to
-CNY; availability includes both a normalized state and the original upstream value.
-
-`get_train_details` uses the separate official train-number and stop endpoints. If 12306 has
-already published the requested date-specific timetable, it can therefore return the stop
-sequence before ticket sales open, with `timetableStatus: "published"`,
-`bookingStatus: "not_on_sale"`, `availability: null`, and the expected sales-opening date. If a
-future date is outside the ticket window and the official train search returns no exact match, the
-tool returns `TIMETABLE_NOT_YET_PUBLISHED` instead of claiming that the train is cancelled or does
-not operate. The timetable publication horizon is undocumented and must not be assumed to be
-fixed.
-
-## Provider limits and freshness
-
-The station master script is cached for 24 hours. Timetable and availability results are not
-cached as current. An anonymous query session is reused in memory for at most ten minutes; a
-redirected ticket query refreshes the session once. If both queries redirect, the provider
-returns `UPSTREAM_QUERY_REJECTED` rather than claiming session initialization failed. Network and
-5xx failures receive at most one
-transient retry. The server does not continuously poll, evade rate limits, or follow an upstream
-redirect outside the allowlisted official query route.
-
-The official query can include other stations in the same city even when exact station codes are
-sent. The provider filters the response's actual departure and arrival codes, so `上海虹桥` is
-not silently broadened to all Shanghai stations. Public web endpoints are undocumented and may
-change or reject requests. Displayed fares are reference values; verify important travel and
-payment information with official channels. The 12306 site publishes its own service terms and
-states that similar third-party sites/apps are not authorized.
-
-No secrets, telemetry, user cookies, or personal-data collection are required or implemented.
-See [SECURITY.md](SECURITY.md) for private vulnerability reporting.
-
-## Release and registry preparation
-
-The package metadata, repository URL, and npm `files` allowlist are ready for a future npm
-release; this project has not been published. Before publishing, verify the intended commit is
-present on the public remote, run `npm pack --dry-run`, and publish only with explicit approval.
-
-The official MCP Registry currently requires a public package, a namespace-owned `mcpName`, and
-a conforming `server.json`. Neither is added here because the npm package and GitHub namespace
-are not established. Once they are, generate metadata with `mcp-publisher init` and validate it
-against the current registry schema before an explicitly approved publication.
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
-## Disclaimer
-
-This is an independent open-source project. It does not use official branding and does not
-imply endorsement by China Railway, 12306, or any railway operator.
+这是一个独立的开源项目，不使用官方品牌，也不暗示获得中国国家铁路集团、12306 或
+任何铁路运营方的认可。
