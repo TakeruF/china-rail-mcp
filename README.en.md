@@ -52,6 +52,10 @@ reference fares for these representative results:
 
 ## Quick start
 
+Not sure whether to use ChatGPT, Qwen Code, TRAE, Coze, or Claude? Start with Silkroad MCP's
+[client compatibility guide](https://takeruf.github.io/silkroad-mcp/en/clients/). Use the
+[self-hosting guide](docs/SELF_HOSTING.en.md) for this project's deployment steps.
+
 ### New to the command line? Let an AI set it up
 
 Copy the entire prompt below into Codex, Claude Code, or another coding AI that can use your
@@ -93,6 +97,65 @@ Perform the work instead of only giving me a tutorial, and follow these requirem
 A real MCP tool call is the completion criterion. If the AI can use the terminal but cannot
 reload or operate the target client, it should complete everything else and identify only the
 final click that you must perform, rather than handing the whole installation back to you.
+
+### Want to use it from a phone? Let an AI host a private server
+
+Local stdio works only on the computer running the server. Phone access requires a continuously
+reachable HTTPS deployment connected to an AI client that supports remote MCP. You need GitHub,
+Vercel, and an account whose client supports custom remote MCP; service plan or usage charges may
+apply.
+
+Give the entire prompt below to a coding AI that can use both the terminal and a browser:
+
+```text
+Deploy China Rail MCP as a private, personal remote service, and continue until I can make a real
+Chinese railway query from my phone's AI client.
+Repository: https://github.com/TakeruF/china-rail-mcp
+
+Perform the work instead of only giving me a tutorial, and follow these requirements:
+
+1. Read the latest repository README, `docs/SELF_HOSTING.en.md`, and the current client's official
+   remote MCP documentation. Confirm that my GitHub, Vercel, and AI client accounts have the
+   required features. Explain the impact and ask before incurring charges, creating a cloud
+   project, signing in to an account, or deploying to Production.
+2. Clone the repository into a safe temporary or working directory, then run `npm ci` and
+   `npm run verify`. Do not modify, commit, or push the project source.
+3. Create a personal project with the repository's Vercel configuration. Generate a unique,
+   strong `MCP_HTTP_BEARER_TOKEN` and store it only as a Vercel Production environment variable.
+   Never put it in source, `.env`, Git, chat, screenshots, deployment logs, or the final report,
+   and never ask me to paste it into chat. If I must enter it, have me paste it directly into a
+   masked Vercel field or the deployed site's OAuth page.
+4. Deploy the current `main` commit to Production and record its stable HTTPS hostname. Do not use
+   a Preview URL as the final address. Run
+   `npm run smoke:http -- https://ACTUAL_HOST/api`; verify that health, OAuth metadata, and
+   protected-resource metadata return 200, while unauthenticated `/api/mcp` returns the expected
+   401 with discovery information. At this stage, that 401 proves authentication is working; it
+   is not a deployment failure.
+5. Follow the remote-MCP connection flow actually supported by the current client, connect
+   `https://ACTUAL_HOST/api/mcp` to my account, and complete OAuth. ChatGPT UI and feature
+   availability may vary by account or version, so check current official documentation and the
+   actual UI. Do not guess menu names or claim that every account is supported. If I must act,
+   ask me only for the login, authorization, or final UI step.
+6. First call `get_provider_status` and `search_stations` from the web or desktop client. Then open
+   a new conversation on my phone with the same account, enable the connection, and make a real
+   train search from 上海虹桥 to 杭州东 on a date inside the current ticket-sales window. Record
+   “deployment succeeded,” “account connection succeeded,” and “mobile tool call succeeded”
+   separately; never infer the third result from the first two.
+7. If the connection is absent on mobile, check the app version, account, workspace permissions,
+   and current product support. Do not make the server public or disable authentication as a
+   workaround. If the account or mobile app does not currently support it, report that product
+   limitation clearly while leaving the safely hosted service available to supported clients.
+8. Report only the Vercel project name and HTTPS MCP URL without secrets, Production deployment
+   status, smoke-test result, web/desktop call result, mobile call result, possible cost points,
+   and how to rotate or revoke access. Never display `MCP_HTTP_BEARER_TOKEN`.
+```
+
+A successful deployment does not automatically prove mobile availability. [Current OpenAI
+documentation](https://learn.chatgpt.com/docs/plugins) says that plugins available to an account
+can be used in ChatGPT on web, desktop, and mobile. This project's private developer connection
+is not a plugin published in the public directory, however, so its appearance on mobile still
+depends on the current client, account, and workspace. Treat a real tool call on the phone as the
+proof. See the [self-hosting guide](docs/SELF_HOSTING.en.md) for the complete server procedure.
 
 ### Manual installation
 

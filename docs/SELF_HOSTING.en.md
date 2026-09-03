@@ -120,6 +120,23 @@ The generated access and refresh tokens are signed and self-contained. This pers
 does not require a database. Rotating `MCP_HTTP_BEARER_TOKEN` invalidates every existing client,
 authorization code, access token, and refresh token for that deployment.
 
+### Using it on a phone
+
+The phone does not connect directly to a stdio process on your computer. It connects to the HTTPS
+MCP deployed above. Complete the connection and OAuth first in a web or desktop client that
+currently supports adding remote MCP, then open a new conversation in the phone app with the same
+account, select the connection, and make a real query.
+
+Verify these as three separate states:
+
+1. the Vercel deployment and unauthenticated smoke test succeed;
+2. the AI-client account completes OAuth and can call tools on web or desktop;
+3. the same account can see the connection and call a tool on mobile.
+
+The first two do not prove the third. Remote-MCP availability on mobile may vary with the client
+version, account plan, staged rollout, or workspace policy. Do not work around a client limitation
+by making the MCP endpoint public or removing authentication.
+
 ## Reproducibility boundary
 
 The build and protocol behavior are reproducible from the lockfile and tests. Live timetables,
