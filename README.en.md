@@ -52,6 +52,50 @@ reference fares for these representative results:
 
 ## Quick start
 
+### New to the command line? Let an AI set it up
+
+Copy the entire prompt below into Codex, Claude Code, or another coding AI that can use your
+terminal and edit files. It asks the AI to inspect the environment, install the project,
+configure your current MCP client, and prove the connection with a real query.
+
+```text
+Install and configure China Rail MCP on this computer until I can make a real Chinese railway
+query from the AI client I currently use. Repository: https://github.com/TakeruF/china-rail-mcp
+
+Perform the work instead of only giving me a tutorial, and follow these requirements:
+
+1. Identify the operating system, current AI/MCP client, and whether Git, Node.js, and npm are
+   available. If you cannot determine which client I want configured, ask me only that question.
+2. Read the repository's latest README and self-hosting guide before acting. Explain in plain
+   language and ask first if you need to install missing software, use administrator access,
+   restart a GUI app, or change a security setting.
+3. Clone the repository into a stable location that will not be casually deleted. If it already
+   exists, inspect its state first and do not overwrite uncommitted files. Install dependencies,
+   run `npm run verify`, and diagnose and fix any errors.
+4. Use `command -v node` to find the absolute Node.js path and find the absolute path to
+   `dist/index.js`. Add a local stdio MCP server named `china-rail` using the configuration format
+   actually supported by the current client. Preserve every existing setting and do not guess the
+   configuration file location.
+5. Local mode needs no `.env`, 12306 account, user cookie, or secret. Do not ask me for any of
+   them, and do not add booking, login, CAPTCHA, background polling, or restriction-bypass logic.
+6. Reload the client configuration as required. Do not treat a silent foreground `npm start` as
+   completion; the MCP client should launch the stdio server.
+7. Prove the setup by calling tools from the configured MCP client: call `get_provider_status`,
+   use `search_stations` for 上海虹桥, then search for trains from 上海虹桥 to 杭州东 on a date
+   inside the current ticket-sales window. If the upstream service is temporarily unavailable,
+   distinguish a working local connection from a failed live 12306 query and keep troubleshooting
+   until the cause is clear. Do not declare success based only on a passing build.
+8. When finished, report only the install location, the client configuration changed, offline
+   verification result, actual MCP call result, and one example question I can ask next. Do not
+   commit or push repository changes.
+```
+
+A real MCP tool call is the completion criterion. If the AI can use the terminal but cannot
+reload or operate the target client, it should complete everything else and identify only the
+final click that you must perform, rather than handing the whole installation back to you.
+
+### Manual installation
+
 Requires Git, Node.js 20 or later, and npm 10 or later. Local stdio use requires no 12306
 account, cookie, secret, or `.env` file.
 
