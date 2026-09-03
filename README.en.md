@@ -2,11 +2,78 @@
 
 [简体中文](README.md) | **English**
 
-China Rail MCP is an unofficial, read-only MCP server for querying Chinese railway
-information.
+China Rail MCP brings Chinese railway timetables, reference fares, and remaining-ticket
+queries into MCP-compatible AI clients such as ChatGPT and Codex.
 
-This project is not affiliated with, endorsed by, or sponsored by China Railway or 12306. It does not provide ticket purchasing, booking automation, account login
-automation, or ticket-sniping functionality.
+> **Note:** This is an unofficial, read-only project. It is not affiliated with, endorsed by,
+> or sponsored by China Railway or 12306. It requires no 12306 login, does not accept user
+> cookies, and cannot purchase, waitlist, snipe, or pay for tickets.
+
+## See the difference
+
+I asked ChatGPT:
+
+> 今天下午5点之后，从广州去长沙的高铁还有哪几趟？
+
+The screenshots below capture the same question on September 3, 2026. They are a
+point-in-time example: results can change with the date, ticket sales, network conditions,
+and the upstream 12306 service.
+
+### Without China Rail MCP
+
+ChatGPT alone could not reliably retrieve the complete list after 17:00 or current seat
+availability, so it directed me to verify the result with 12306.
+
+<img src="docs/images/chatgpt-without-mcp.jpg" alt="ChatGPT without China Rail MCP asks the user to verify the result in 12306" width="300">
+
+### With China Rail MCP
+
+With China Rail MCP connected, the same question returned trains departing after 17:00,
+including departure and arrival times, duration, reference fares, and seat availability.
+
+<img src="docs/images/chatgpt-with-mcp.jpg" alt="ChatGPT with China Rail MCP lists trains after 17:00 with times, fares, and availability" width="300">
+
+### Compared with 12306
+
+A check in the 12306 app at the same time matched the train numbers, times, and starting
+reference fares for these representative results:
+
+<img src="docs/images/12306-reference.jpg" alt="12306 app showing the same Guangzhou South to Changsha South search" width="300">
+
+| Train | Departure | Arrival | Starting reference fare |
+| ----- | --------- | ------- | ----------------------- |
+| G1192 | 17:03     | 19:44   | ¥283                    |
+| G1116 | 17:14     | 20:12   | ¥330                    |
+| G400  | 17:27     | 19:49   | ¥377                    |
+| G6010 | 17:33     | 19:35   | ¥320                    |
+| G420  | 17:40     | 19:53   | ¥339                    |
+
+**Same question. Same railway data. Now available directly to your AI.**
+
+## Quick start
+
+Requires Git, Node.js 20 or later, and npm 10 or later. Local stdio use requires no 12306
+account, cookie, secret, or `.env` file.
+
+```sh
+git clone https://github.com/TakeruF/china-rail-mcp.git
+cd china-rail-mcp
+npm ci
+npm run verify
+npm start
+```
+
+`npm run verify` is an offline-upstream quality gate: it checks the environment, lint, types,
+fixture tests, build, formatting, production dependencies, and a real stdio MCP initialization.
+`npm start` speaks JSON-RPC over standard input/output and normally waits silently for an MCP
+client. To include a point-in-time check against the current public 12306 service, run:
+
+```sh
+npm run verify:live
+```
+
+Live verification depends on the network and current upstream behavior and is not reproducible
+offline.
 
 ## Current live-data status
 
@@ -37,27 +104,11 @@ accept user cookies, handle SMS or CAPTCHAs, store identity data, book tickets, 
 waitlists, snatch tickets, make payments, or change/cancel bookings. Anonymous cookies from
 the official query page are memory-only and expire from the provider after ten minutes.
 
-## Install and run
+## Install and client configuration
 
-Requires Node.js 20 or later.
-
-```sh
-git clone https://github.com/TakeruF/china-rail-mcp.git
-cd china-rail-mcp
-npm ci
-npm run verify
-npm start
-```
-
-`npm run verify` is an offline-upstream quality gate: it checks the environment, lint, types,
-fixture tests, build, formatting, production dependencies, and a real stdio MCP initialization.
 `npm run test:integration` is the separate opt-in check against the current public 12306 service.
-Local stdio use requires no account, secret, or `.env` file. For Docker and a private Vercel
-deployment, see [Self-hosting China Rail MCP](docs/SELF_HOSTING.en.md).
-
-`npm start` speaks JSON-RPC over standard input/output and normally waits silently for an MCP
-client. To include a point-in-time live-data check before configuring a client, run
-`npm run verify:live` instead of `npm run verify`.
+For Docker and a private Vercel deployment, see
+[Self-hosting China Rail MCP](docs/SELF_HOSTING.en.md).
 
 After publication, the package executable will be usable as `npx china-rail-mcp`.
 

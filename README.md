@@ -2,10 +2,50 @@
 
 **简体中文** | [English](README.en.md)
 
-China Rail MCP 是一个非官方、只读的 MCP 服务器，用于查询中国铁路信息。
+China Rail MCP 将中国铁路的车次、时刻、参考票价和余票查询接入 ChatGPT、Codex
+等支持 MCP 的 AI 客户端。
 
-本项目与中国国家铁路集团或 12306 无隶属、认可或赞助关系，不提供购票、自动登录、
-候补提交、抢票或支付功能。
+> **注意：**这是一个非官方、只读项目，与中国国家铁路集团或 12306 无隶属、认可或
+> 赞助关系。无需登录 12306，不接收用户 Cookie，也不提供购票、候补、抢票或支付功能。
+
+## 同一个问题，接入 China Rail MCP 前后
+
+我向 ChatGPT 提问：
+
+> 今天下午5点之后，从广州去长沙的高铁还有哪几趟？
+
+以下是 2026-09-03 对同一问题的实际演示。结果是当次查询的快照，会随日期、售票情况、
+网络和 12306 上游状态变化。
+
+### 未接入 China Rail MCP
+
+仅使用 ChatGPT 时，它无法可靠取得当天 17:00 之后的完整车次和余票，因此建议前往
+12306 核对。
+
+<img src="docs/images/chatgpt-without-mcp.jpg" alt="ChatGPT without China Rail MCP asks the user to verify the result in 12306" width="300">
+
+### 接入 China Rail MCP 后
+
+接入 China Rail MCP 后，同一个问题可以直接查询 17:00 之后的车次，并列出出发和到达
+时刻、用时、参考票价及余票。
+
+<img src="docs/images/chatgpt-with-mcp.jpg" alt="ChatGPT with China Rail MCP lists trains after 17:00 with times, fares, and availability" width="300">
+
+### 与 12306 对照
+
+同一时刻在 12306 App 中核对，以下代表性车次的车次号、时刻和起始参考票价相符：
+
+<img src="docs/images/12306-reference.jpg" alt="12306 App showing the same Guangzhou South to Changsha South search" width="300">
+
+| 车次  | 出发  | 到达  | 起始参考票价 |
+| ----- | ----- | ----- | ------------ |
+| G1192 | 17:03 | 19:44 | ¥283         |
+| G1116 | 17:14 | 20:12 | ¥330         |
+| G400  | 17:27 | 19:49 | ¥377         |
+| G6010 | 17:33 | 19:35 | ¥320         |
+| G420  | 17:40 | 19:53 | ¥339         |
+
+**同一个问题。铁路数据现在可以直接接入你的 AI 工作流。**
 
 ## 快速开始：克隆后供自己使用
 
