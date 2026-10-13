@@ -228,6 +228,24 @@ China Rail MCP 向 Codex、Claude Desktop、ChatGPT 集成等兼容 MCP 的客�
 
 来自 12306 查询页面的匿名 Cookie 仅保存在内存中，上游通常会在十分钟后使其失效。
 
+### 从 Codex 插件市场安装
+
+本仓库包含一个 Codex 插件市场。插件在用户电脑上通过 Node.js 运行只读 MCP 服务，不
+需要单独部署远程服务器、12306 账号或访问密钥。需要 Node.js 20 或更高版本。
+
+在 Codex 的插件页面选择「添加插件市场」，填写：
+
+- **Source**：`TakeruF/china-rail-mcp`
+- **Git ref**：`main`
+- **Sparse paths**：`.agents/plugins` 和 `plugins/codex`（分别一行）
+
+添加市场后，在 China Rail 条目中选择安装。安装完成后开始新对话，即可调用车站、车次、
+经停站和余票查询工具。查询会访问 12306 的公开接口；结果是时效性参考数据，不会订票或
+付款。
+
+插件运行的是仓库内生成的独立 bundle。修改 MCP 服务后，用 `npm run build:codex-plugin`
+重新生成 `plugins/codex/server.mjs` 并一并提交。
+
 ## 可用工具
 
 | 工具                  | 用途                                                    |

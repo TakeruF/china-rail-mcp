@@ -37,6 +37,7 @@
   "scripts": {
     "dev": "tsx src/index.ts",
     "build": "tsc -p tsconfig.json",
+    "build:codex-plugin": "esbuild src/index.ts --bundle --platform=node --format=esm --target=node20 --outfile=plugins/codex/server.mjs",
     "start": "node dist/index.js",
     "doctor": "node scripts/doctor.mjs",
     "generate:secret": "node scripts/generate-secret.mjs",
@@ -65,6 +66,7 @@
     "@eslint/js": "^9.39.1",
     "@types/node": "^22.15.3",
     "cross-env": "^10.0.0",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.1",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^16.5.0",

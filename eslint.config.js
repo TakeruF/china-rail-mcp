@@ -8,5 +8,5 @@ export default [
   ...tseslint.configs.recommended,
   { languageOptions: { globals: globals.node } },
   prettier,
-  { ignores: ['dist/', 'coverage/', 'fixtures/'] },
+  { ignores: ['dist/', 'coverage/', 'fixtures/', 'plugins/codex/server.mjs'] },
 ];

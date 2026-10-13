@@ -1,0 +1,22 @@
+{
+  "name": "china-rail",
+  "interface": {
+    "displayName": "China Rail"
+  },
+  "plugins": [
+    {
+      "name": "china-rail",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/TakeruF/china-rail-mcp.git",
+        "path": "./plugins/codex",
+        "ref": "main"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_USE"
+      },
+      "category": "Travel"
+    }
+  ]
+}

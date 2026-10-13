@@ -1,0 +1,33 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "china-rail",
+  "version": "0.1.0",
+  "description": "Read-only China Railway 12306 timetables, fares, stops, and seat availability.",
+  "author": {
+    "name": "TakeruF",
+    "url": "https://github.com/TakeruF"
+  },
+  "homepage": "https://github.com/TakeruF/china-rail-mcp",
+  "repository": "https://github.com/TakeruF/china-rail-mcp",
+  "license": "MIT",
+  "keywords": ["china-rail", "12306", "railway", "mcp"],
+  "extensions": {
+    "com.openai": {
+      "onboardingSkill": "./skills/china-rail/SKILL.md",
+      "interface": {
+        "displayName": "China Rail",
+        "shortDescription": "查询中国铁路时刻、票价和余票",
+        "longDescription": "通过中国铁路12306公开接口进行只读查询。支持车站搜索、车次搜索、经停站、席别余票和车次比较；不登录、不订票、不支付。",
+        "developerName": "TakeruF",
+        "category": "Travel",
+        "capabilities": ["Read"],
+        "websiteURL": "https://github.com/TakeruF/china-rail-mcp",
+        "defaultPrompt": [
+          "查询今天从上海虹桥到杭州东的高铁，按出发时间列出车次、票价和余票。",
+          "查询 G1 次列车明天的完整经停站和时刻。"
+        ],
+        "brandColor": "#C62828"
+      }
+    }
+  }
+}
