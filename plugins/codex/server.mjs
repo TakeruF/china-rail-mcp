@@ -4148,13 +4148,14 @@ var require_fast_uri = __commonJS({
         if (!malformedIPLiteral) {
           malformedHost = canonicalizeHost(parsed, options, schemeHandler, isIP);
         }
-        if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
-          if (uri.indexOf("%") !== -1) {
-            if (parsed.host !== void 0 && !malformedIPLiteral) {
-              const host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
-              parsed.host = reescapeHostDelimiters(host, isIP);
-            }
+        if (uri.indexOf("%") !== -1 && parsed.host !== void 0 && !malformedIPLiteral) {
+          let host = isIP ? parsed.host : normalizePercentEncoding(parsed.host, true);
+          if (!isIP) {
+            host = normalizePercentEncoding(host.toLowerCase());
           }
+          parsed.host = reescapeHostDelimiters(host, isIP);
+        }
+        if (!schemeHandler || schemeHandler && !schemeHandler.skipNormalize) {
           if (parsed.path) {
             parsed.path = normalizePathEncoding(parsed.path);
           }
@@ -19523,6 +19524,9 @@ var Protocol = class {
       this.setRequestHandler(GetTaskPayloadRequestSchema, async (request, extra) => {
         const handleTaskResult = async () => {
           const taskId = request.params.taskId;
+          if (!await this._taskStore.getTask(taskId, extra.sessionId)) {
+            throw new McpError(ErrorCode.InvalidParams, `Task not found: ${taskId}`);
+          }
           if (this._taskMessageQueue) {
             let queuedMessage;
             while (queuedMessage = await this._taskMessageQueue.dequeue(taskId, extra.sessionId)) {
@@ -19553,12 +19557,12 @@ var Protocol = class {
             throw new McpError(ErrorCode.InvalidParams, `Task not found: ${taskId}`);
           }
           if (!isTerminal(task.status)) {
-            await this._waitForTaskUpdate(taskId, extra.signal);
+            await this._waitForTaskUpdate(taskId, extra.signal, extra.sessionId);
             return await handleTaskResult();
           }
           if (isTerminal(task.status)) {
             const result = await this._taskStore.getTaskResult(taskId, extra.sessionId);
-            this._clearTaskQueue(taskId);
+            this._clearTaskQueue(taskId, extra.sessionId);
             return {
               ...result,
               _meta: {
@@ -19595,7 +19599,7 @@ var Protocol = class {
             throw new McpError(ErrorCode.InvalidParams, `Cannot cancel task in terminal status: ${task.status}`);
           }
           await this._taskStore.updateTaskStatus(request.params.taskId, "cancelled", "Client cancelled task execution.", extra.sessionId);
-          this._clearTaskQueue(request.params.taskId);
+          this._clearTaskQueue(request.params.taskId, extra.sessionId);
           const cancelledTask = await this._taskStore.getTask(request.params.taskId, extra.sessionId);
           if (!cancelledTask) {
             throw new McpError(ErrorCode.InvalidParams, `Task not found after cancellation: ${request.params.taskId}`);
@@ -19723,6 +19727,19 @@ var Protocol = class {
     const handler = this._requestHandlers.get(request.method) ?? this.fallbackRequestHandler;
     const capturedTransport = this._transport;
     const relatedTaskId = request.params?._meta?.[RELATED_TASK_META_KEY]?.taskId;
+    const sessionId = capturedTransport?.sessionId;
+    const store = this._taskStore;
+    let relatedTaskFound = true;
+    let relatedTaskLookup;
+    if (relatedTaskId && store && this._taskMessageQueue && sessionId !== void 0) {
+      relatedTaskFound = false;
+      relatedTaskLookup = (async () => {
+        if (!await store.getTask(relatedTaskId, sessionId)) {
+          throw new McpError(ErrorCode.InvalidParams, `Task not found: ${relatedTaskId}`);
+        }
+        relatedTaskFound = true;
+      })();
+    }
     if (handler === void 0) {
       const errorResponse = {
         jsonrpc: "2.0",
@@ -19732,7 +19749,10 @@ var Protocol = class {
           message: "Method not found"
         }
       };
-      if (relatedTaskId && this._taskMessageQueue) {
+      if (relatedTaskId && relatedTaskLookup) {
+        const queuedError = { type: "error", message: errorResponse, timestamp: Date.now() };
+        relatedTaskLookup.then(() => this._enqueueTaskMessage(relatedTaskId, queuedError, sessionId), () => capturedTransport?.send(errorResponse)).catch((error2) => this._onerror(new Error(`Failed to send an error response: ${error2}`)));
+      } else if (relatedTaskId && this._taskMessageQueue) {
         this._enqueueTaskMessage(relatedTaskId, {
           type: "error",
           message: errorResponse,
@@ -19783,7 +19803,10 @@ var Protocol = class {
       closeSSEStream: extra?.closeSSEStream,
       closeStandaloneSSEStream: extra?.closeStandaloneSSEStream
     };
-    Promise.resolve().then(() => {
+    (relatedTaskLookup ?? Promise.resolve()).then(() => {
+      if (relatedTaskLookup && abortController.signal.aborted) {
+        throw new McpError(ErrorCode.ConnectionClosed, "Request was cancelled");
+      }
       if (taskCreationParams) {
         this.assertTaskHandlerCapability(request.method);
       }
@@ -19818,7 +19841,7 @@ var Protocol = class {
           ...error2["data"] !== void 0 && { data: error2["data"] }
         }
       };
-      if (relatedTaskId && this._taskMessageQueue) {
+      if (relatedTaskId && this._taskMessageQueue && relatedTaskFound) {
         await this._enqueueTaskMessage(relatedTaskId, {
           type: "error",
           message: errorResponse,
@@ -20298,7 +20321,7 @@ var Protocol = class {
       throw new Error("Cannot enqueue task message: taskStore and taskMessageQueue are not configured");
     }
     const maxQueueSize = this._options?.maxTaskQueueSize;
-    await this._taskMessageQueue.enqueue(taskId, message, sessionId, maxQueueSize);
+    await this._taskMessageQueue.enqueue(taskId, message, sessionId ?? this._transport?.sessionId, maxQueueSize);
   }
   /**
    * Clears the message queue for a task and rejects any pending request resolvers.
@@ -20327,12 +20350,13 @@ var Protocol = class {
    * Uses polling to check for updates at the task's configured poll interval.
    * @param taskId The task ID to wait for
    * @param signal Abort signal to cancel the wait
+   * @param sessionId Session of the request that waits, passed to the task store
    * @returns Promise that resolves when an update occurs or rejects if aborted
    */
-  async _waitForTaskUpdate(taskId, signal) {
+  async _waitForTaskUpdate(taskId, signal, sessionId) {
     let interval = this._options?.defaultTaskPollInterval ?? 1e3;
     try {
-      const task = await this._taskStore?.getTask(taskId);
+      const task = await this._taskStore?.getTask(taskId, sessionId);
       if (task?.pollInterval) {
         interval = task.pollInterval;
       }
@@ -21211,6 +21235,42 @@ var ExperimentalMcpServerTasks = class {
 };
 
 // node_modules/@modelcontextprotocol/sdk/dist/esm/server/mcp.js
+function toolInputElementCount(value, max) {
+  let count = 0;
+  const stack = [value];
+  while (stack.length > 0) {
+    const node = stack.pop();
+    if (node === null || typeof node !== "object")
+      continue;
+    if (Array.isArray(node)) {
+      for (const child of node) {
+        if (++count > max)
+          return count;
+        if (child !== null && typeof child === "object")
+          stack.push(child);
+      }
+    } else {
+      for (const key in node) {
+        if (!Object.prototype.hasOwnProperty.call(node, key))
+          continue;
+        if (++count > max)
+          return count;
+        const child = node[key];
+        if (child !== null && typeof child === "object")
+          stack.push(child);
+      }
+    }
+  }
+  return count;
+}
+function resolveMaxToolInputElements(value) {
+  if (value === void 0 || value === Infinity)
+    return void 0;
+  if (typeof value !== "number" || Number.isNaN(value) || value < 1) {
+    throw new RangeError(`maxToolInputElements must be a number of at least 1, or Infinity, got ${String(value)}`);
+  }
+  return value;
+}
 var McpServer = class {
   constructor(serverInfo, options) {
     this._registeredResources = {};
@@ -21222,6 +21282,7 @@ var McpServer = class {
     this._resourceHandlersInitialized = false;
     this._promptHandlersInitialized = false;
     this.server = new Server(serverInfo, options);
+    this._maxToolInputElements = resolveMaxToolInputElements(options?.maxToolInputElements);
   }
   /**
    * Access experimental features.
@@ -21352,12 +21413,15 @@ var McpServer = class {
    * Validates tool input arguments against the tool's input schema.
    */
   async validateToolInput(tool, args, toolName) {
+    if (this._maxToolInputElements !== void 0 && toolInputElementCount(args, this._maxToolInputElements) > this._maxToolInputElements) {
+      throw new McpError(ErrorCode.InvalidParams, `Invalid arguments for tool ${toolName}: arguments contain more than the maximum of ${this._maxToolInputElements} elements`);
+    }
     if (!tool.inputSchema) {
       return void 0;
     }
     const inputObj = normalizeObjectSchema(tool.inputSchema);
     const schemaToParse = inputObj ?? tool.inputSchema;
-    const parseResult = await safeParseAsync3(schemaToParse, args);
+    const parseResult = await safeParseAsync3(schemaToParse, args ?? {});
     if (!parseResult.success) {
       const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
       const errorMessage = getParseErrorMessage(error2);
@@ -21595,7 +21659,7 @@ var McpServer = class {
       }
       if (prompt.argsSchema) {
         const argsObj = normalizeObjectSchema(prompt.argsSchema);
-        const parseResult = await safeParseAsync3(argsObj, request.params.arguments);
+        const parseResult = await safeParseAsync3(argsObj, request.params.arguments ?? {});
         if (!parseResult.success) {
           const error2 = "error" in parseResult ? parseResult.error : "Unknown error";
           const errorMessage = getParseErrorMessage(error2);
