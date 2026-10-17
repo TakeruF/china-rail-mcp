@@ -9,6 +9,55 @@ queries into MCP-compatible AI clients such as ChatGPT and Codex.
 > or sponsored by China Railway or 12306. It requires no 12306 login, does not accept user
 > cookies, and cannot purchase, waitlist, snipe, or pay for tickets.
 
+## Install from the Codex plugin marketplace
+
+Using Codex? Install from the plugin marketplace without manually cloning the repository or
+hosting a server. You need Node.js 20 or later on your computer; no 12306 account, cookie, or
+access token is required.
+
+**1. Open the add-marketplace dialog**
+
+On the Codex plugins page, choose **Add plugin marketplace**.
+
+<img src="docs/images/codex-add-plugin-marketplace.png" alt="Codex Add plugin marketplace dialog with Source, Git ref, and Sparse paths fields" width="720">
+
+The screenshot shows where the fields are. Enter the values below.
+
+**2. Enter the repository details**
+
+**Source** (repository):
+
+```text
+TakeruF/china-rail-mcp
+```
+
+**Git ref** (branch):
+
+```text
+main
+```
+
+**Sparse paths** (download only these directories, one per line):
+
+```text
+.agents/plugins
+plugins/codex
+```
+
+**3. Install and start using it**
+
+Click **Add marketplace**, then install **China Rail** from its listing.
+Start a new chat after installation and try:
+
+> Show tomorrow's high-speed trains from Shanghai Hongqiao to Hangzhou East, including departure
+> times, reference fares, and seat availability.
+
+Queries access public 12306 endpoints. Fares and availability reflect the time of the query;
+this plugin can only look up information and cannot book or pay for tickets.
+
+Using another client? See [other installation options](#quick-start). Want to see it in action?
+Read the example below.
+
 ## See the difference
 
 I asked ChatGPT:
@@ -219,25 +268,6 @@ For Docker and a private Vercel deployment, see
 
 After publication, the package executable will be usable as `npx china-rail-mcp`.
 
-### Install from the Codex plugin marketplace
-
-This repository includes a Codex plugin marketplace. The plugin runs the read-only MCP server
-locally through Node.js, so it needs no shared remote server, 12306 account, or access token.
-Node.js 20 or later is required.
-
-In Codex, choose **Add plugin marketplace** and enter:
-
-- **Source**: `TakeruF/china-rail-mcp`
-- **Git ref**: `main`
-- **Sparse paths**: `.agents/plugins` and `plugins/codex` (one per line)
-
-After adding the marketplace, install China Rail from its listing. Start a new chat to use the
-station, train, stop, and availability tools. Queries access public 12306 endpoints; results are
-time-sensitive references, and the plugin cannot book or pay for tickets.
-
-The plugin runs a standalone bundle included in the repository. After changing the MCP server,
-run `npm run build:codex-plugin` and commit the regenerated `plugins/codex/server.mjs`.
-
 For a local MCP client, configure stdio (adjust the absolute path):
 
 ```json
@@ -374,6 +404,9 @@ No secrets, telemetry, user cookies, or personal-data collection are required or
 See [SECURITY.md](SECURITY.md) for private vulnerability reporting.
 
 ## Release and registry preparation
+
+The plugin runs a standalone bundle included in the repository. After changing the MCP server,
+run `npm run build:codex-plugin` and commit the regenerated `plugins/codex/server.mjs`.
 
 The package metadata, repository URL, and npm `files` allowlist are ready for a future npm
 release; this project has not been published. Before publishing, verify the intended commit is
