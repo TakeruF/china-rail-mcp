@@ -9,3 +9,4 @@ session.json
 credentials.json
 *.har
 .vercel
+.vscode/settings.json
