@@ -5,37 +5,48 @@
 China Rail MCP 将中国铁路的车次、时刻、参考票价和余票查询接入 ChatGPT、Codex
 等支持 MCP 的 AI 客户端。
 
-> **注意：**这是一个非官方、只读项目，与中国国家铁路集团或 12306 无隶属、认可或
+> **注意：** 这是一个非官方、只读项目，与中国国家铁路集团或 12306 无隶属、认可或
 > 赞助关系。无需登录 12306，不接收用户 Cookie，也不提供购票、候补、抢票或支付功能。
 
-## 从 Codex 插件市场安装
+## 从 ChatGPT 桌面版的插件市场安装
 
-使用 Codex？从插件市场安装即可，无需手动克隆仓库或部署服务器。电脑上需要
-Node.js 20 或更高版本；不需要 12306 账号、Cookie 或访问密钥。
+在 macOS 的 ChatGPT 桌面版中添加本仓库的插件市场，然后安装 **China Rail**，无需手动
+克隆仓库或部署服务器。电脑上需要 Node.js 20 或更高版本；不需要 12306 账号、Cookie
+或访问密钥。这是运行在本机的安装方式，手机端请看[远程部署说明](#想在手机上使用让-ai-部署私人服务器)。
+
+[OpenAI 官方说明](https://learn.chatgpt.com/docs/plugins#use-and-install-plugins)将入口称为
+**Plugins（插件）/ Plugins Directory（插件目录）**，ChatGPT 和 Codex 共用公共插件目录。
+下面的步骤是添加本仓库提供的市场源，再从该源安装插件。
 
 **1. 打开添加页面**
 
-在 Codex 的插件页面选择「添加插件市场」（**Add plugin marketplace**）。
+在 ChatGPT 桌面版的「自定义」界面中：
 
-<img src="docs/images/codex-add-plugin-marketplace.png" alt="Codex 的 Add plugin marketplace 对话框，包含 Source、Git ref 和 Sparse paths 输入框" width="720">
+1. 选择左侧的 **插件（Plugins）**。
+2. 点击右上角的 **添加（Add）** 下拉按钮。
+3. 选择 **添加插件市场（Add plugin marketplace）**。
 
-截图展示输入框的位置，请填写下面的值。
+以上路径已根据 2026-10-21 的 macOS 中文界面截图核对；其他版本的入口可能有所不同。
+
+<img src="docs/images/chatgpt-add-plugin-marketplace-zh.png" alt="ChatGPT macOS 中文版的添加插件市场对话框，包含来源、Git 引用和稀疏路径输入框" width="720">
+
+上图为 2026-10-21 的 macOS 中文界面。请按下面的字段名填写，不要照抄截图中的示例或占位文字。
 
 **2. 填写仓库信息**
 
-**Source**（仓库）：
+**来源（Source）**：填写仓库名称。
 
 ```text
 TakeruF/china-rail-mcp
 ```
 
-**Git ref**（分支）：
+**Git 引用（Git ref）**：填写 `main`，不要填写占位提示「主分支」。
 
 ```text
 main
 ```
 
-**Sparse paths**（只下载所需目录，分别一行）：
+**稀疏路径（Sparse paths）**：只下载所需目录，每行填写一个路径。
 
 ```text
 .agents/plugins
@@ -44,12 +55,27 @@ plugins/codex
 
 **3. 安装并开始使用**
 
-点击 **Add marketplace**，然后在市场中的 **China Rail** 条目选择安装。
-安装完成后开始新对话，试着问：
+点击 **添加市场（Add marketplace）**，然后在市场中的 **China Rail** 条目选择安装。
+安装完成后，在 ChatGPT 桌面版的 Work 或 Codex 中开始新对话，试着问：
 
 > 查询明天从上海虹桥到杭州东的高铁，列出出发时间、参考票价和余票。
 
 查询会访问 12306 的公开接口；票价和余票以查询时的结果为准。插件仅供查询，不会订票或付款。
+
+<details>
+<summary>找不到 Add plugin marketplace？使用 Codex CLI 添加市场源</summary>
+
+如果已经安装 Codex CLI，可以按[官方市场源配置说明](https://developers.openai.com/plugins/build/plugins#add-a-marketplace-from-the-cli)
+在终端运行：
+
+```sh
+codex plugin marketplace add TakeruF/china-rail-mcp --ref main --sparse .agents/plugins --sparse plugins/codex
+```
+
+这条命令只添加市场源。之后回到 ChatGPT 桌面版的插件目录，选择 **China Rail** 市场，
+再安装其中的 **China Rail** 插件。
+
+</details>
 
 使用其他客户端？查看[其他安装方式](#快速开始)。想先看看效果？继续阅读下面的实际演示。
 

@@ -9,35 +9,48 @@ queries into MCP-compatible AI clients such as ChatGPT and Codex.
 > or sponsored by China Railway or 12306. It requires no 12306 login, does not accept user
 > cookies, and cannot purchase, waitlist, snipe, or pay for tickets.
 
-## Install from the Codex plugin marketplace
+## Install from the plugin marketplace in ChatGPT desktop
 
-Using Codex? Install from the plugin marketplace without manually cloning the repository or
-hosting a server. You need Node.js 20 or later on your computer; no 12306 account, cookie, or
-access token is required.
+In the ChatGPT desktop app on macOS, add this repository as a plugin marketplace, then install
+**China Rail** without manually cloning the repository or hosting a server. You need Node.js 20
+or later on your computer; no 12306 account, cookie, or access token is required. This installation
+runs on your computer. For phone access, see the [remote deployment instructions](#want-to-use-it-from-a-phone-let-an-ai-host-a-private-server).
+
+[OpenAI's official documentation](https://learn.chatgpt.com/docs/plugins#use-and-install-plugins)
+calls this entry point **Plugins / Plugins Directory**. ChatGPT and Codex share the public plugin
+directory. The steps below add this repository's marketplace source, then install from that source.
 
 **1. Open the add-marketplace dialog**
 
-On the Codex plugins page, choose **Add plugin marketplace**.
+In the ChatGPT desktop app's customization view:
 
-<img src="docs/images/codex-add-plugin-marketplace.png" alt="Codex Add plugin marketplace dialog with Source, Git ref, and Sparse paths fields" width="720">
+1. Select **Plugins（插件）** on the left.
+2. Open the **Add（添加）** dropdown at the top right.
+3. Choose **Add plugin marketplace（添加插件市场）**.
 
-The screenshot shows where the fields are. Enter the values below.
+This path was checked against screenshots of the macOS app's Chinese interface on October 21, 2026. The entry point may differ in other versions.
+
+<img src="docs/images/codex-add-plugin-marketplace.png" alt="Previously saved Add plugin marketplace dialog showing Source, Git ref, and Sparse paths fields" width="720">
+
+This previously saved screenshot shows the field locations; the current app may look different.
+Match the field names and enter the values below, rather than copying the examples or placeholders
+in the screenshot.
 
 **2. Enter the repository details**
 
-**Source** (repository):
+**Source（来源）** — repository:
 
 ```text
 TakeruF/china-rail-mcp
 ```
 
-**Git ref** (branch):
+**Git ref（Git 引用）** — enter `main`, rather than the translated placeholder `主分支`:
 
 ```text
 main
 ```
 
-**Sparse paths** (download only these directories, one per line):
+**Sparse paths（稀疏路径）** — download only these directories, one per line:
 
 ```text
 .agents/plugins
@@ -46,14 +59,29 @@ plugins/codex
 
 **3. Install and start using it**
 
-Click **Add marketplace**, then install **China Rail** from its listing.
-Start a new chat after installation and try:
+Click **Add marketplace（添加市场）**, then install **China Rail** from its listing.
+After installation, start a new chat in Work or Codex in the ChatGPT desktop app and try:
 
 > Show tomorrow's high-speed trains from Shanghai Hongqiao to Hangzhou East, including departure
 > times, reference fares, and seat availability.
 
 Queries access public 12306 endpoints. Fares and availability reflect the time of the query;
 this plugin can only look up information and cannot book or pay for tickets.
+
+<details>
+<summary>Can't find Add plugin marketplace? Add the source with Codex CLI</summary>
+
+If you already have Codex CLI installed, run this command in your terminal, as described in
+[OpenAI's marketplace setup documentation](https://developers.openai.com/plugins/build/plugins#add-a-marketplace-from-the-cli):
+
+```sh
+codex plugin marketplace add TakeruF/china-rail-mcp --ref main --sparse .agents/plugins --sparse plugins/codex
+```
+
+This command only adds the marketplace source. Return to the Plugins Directory in the ChatGPT
+desktop app, select the **China Rail** marketplace, then install its **China Rail** plugin.
+
+</details>
 
 Using another client? See [other installation options](#quick-start). Want to see it in action?
 Read the example below.
