@@ -129,7 +129,8 @@ codex plugin marketplace add TakeruF/china-rail-mcp --ref main --sparse .agents/
 
 所有语言使用同一连接地址：`https://mcp.takeruf.com/china-rail/mcp`。
 需要服务管理员提供的连接密码并完成 OAuth；已有密码时，无需在本地安装或自行部署。
-部署与维护说明见 [EdgeOne hub 指南](makers/README.md)。
+部署与维护说明见 [EdgeOne hub 指南](makers/README.md)。目录采用轻量终端风格，
+保留常规按钮和连接说明，也可在页面内的命令区输入 `help`、`copy`、`status` 等命令。
 
 不确定该用 ChatGPT、Qwen Code、TRAE、扣子还是 Claude？请先查看 Silkroad MCP 的
 [客户端兼容性指南](https://takeruf.github.io/silkroad-mcp/zh/clients/)。本项目的具体部署

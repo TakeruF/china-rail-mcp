@@ -3,22 +3,27 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#10120f" />
     <meta name="description" content="{{description}}" />
     <title>{{title}}</title>
     <link rel="canonical" href="https://mcp.takeruf.com/{{locale}}" />
     {{alternates}}
     <link
       rel="icon"
-      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%231c1c1c'/%3E%3Cpath d='M10 27V13l10 10 10-10v14' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='6' fill='%2310120f'/%3E%3Cpath d='m9 12 8 8-8 8m12 0h10' fill='none' stroke='%23c4f86e' stroke-width='3'/%3E%3C/svg%3E"
     />
     <link rel="stylesheet" href="/hub.css?v={{cssHash}}" />
     <script src="/hub.js?v={{jsHash}}" defer></script>
   </head>
   <body>
+    <a class="skip-link" href="#services-title">{{services}}</a>
     <div class="page">
-      <header>
+      <header class="site-header">
         <a class="brand" href="/{{locale}}" aria-label="{{homeLabel}}"
-          ><span class="brand-mark">M</span> Takeru <span class="brand-divider">/</span> MCP</a
+          ><span class="brand-mark" aria-hidden="true">&gt;_</span> takeru<span
+            class="brand-divider"
+            >/</span
+          >mcp</a
         >
         <div class="header-actions">
           <a
@@ -36,93 +41,145 @@
       </header>
       <main>
         <section class="intro" aria-labelledby="title">
-          <div class="eyebrow"><span class="small-dot"></span> {{eyebrow}}</div>
-          <h1 id="title">{{headline}}</h1>
-          <p>{{introFirst}}<br />{{introSecond}}</p>
+          <div class="intro-copy">
+            <p class="eyebrow"><span aria-hidden="true">~ /</span> {{eyebrow}}</p>
+            <h1 id="title">{{headline}}<span class="cursor" aria-hidden="true">_</span></h1>
+            <p class="intro-description">{{introFirst}}<br />{{introSecond}}</p>
+          </div>
+          <div class="ascii-brand" aria-hidden="true">
+            <pre>
+███╗   ███╗ ██████╗██████╗
+████╗ ████║██╔════╝██╔══██╗
+██╔████╔██║██║     ██████╔╝
+██║╚██╔╝██║██║     ██╔═══╝
+██║ ╚═╝ ██║╚██████╗██║
+╚═╝     ╚═╝ ╚═════╝╚═╝</pre>
+            <span>MODEL CONTEXT PROTOCOL</span>
+          </div>
         </section>
         <section class="services" aria-labelledby="services-title">
           <div class="section-heading">
-            <h2 id="services-title">{{services}}</h2>
+            <h2 id="services-title"><span aria-hidden="true">./</span>{{services}}</h2>
             <span>{{serviceCount}}</span>
           </div>
-          <article class="service-card">
-            <div class="card-heading">
-              <div class="service-identity">
-                <div class="train-icon" aria-hidden="true">
-                  <svg
-                    width="28"
-                    height="28"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    stroke-width="1.5"
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
+          <div class="workspace">
+            <article class="service-card" id="china-rail">
+              <div class="panel-bar">
+                <span><span class="panel-number">01</span> china-rail</span
+                ><span class="file-type" aria-hidden="true">MCP</span>
+              </div>
+              <div class="service-content">
+                <div class="card-heading">
+                  <div class="service-identity">
+                    <span class="train-icon" aria-hidden="true">╭─╮<br />▣ ▣<br />╰┬╯</span>
+                    <div>
+                      <h3>China Rail</h3>
+                      <p class="service-subtitle">{{serviceSubtitle}}</p>
+                    </div>
+                  </div>
+                  <span
+                    class="status"
+                    id="health-status"
+                    role="status"
+                    data-pending="{{healthPending}}"
+                    data-ok="{{healthOk}}"
+                    data-error="{{healthError}}"
+                    data-detail="{{healthDetail}}"
+                    ><span class="status-dot" aria-hidden="true"></span
+                    ><span>{{healthPending}}</span></span
                   >
-                    <rect x="5" y="3" width="14" height="15" rx="4" />
-                    <path d="M5 10h14M12 3v7M8 18l-2 3m10-3 2 3" />
-                    <circle cx="8.5" cy="14" r=".75" fill="currentColor" />
-                    <circle cx="15.5" cy="14" r=".75" fill="currentColor" />
-                  </svg>
                 </div>
-                <div>
-                  <h3>China Rail</h3>
-                  <p class="service-subtitle">{{serviceSubtitle}}</p>
+                <p class="service-description">{{serviceDescription}}</p>
+                <div class="tags">
+                  <span>{{readOnly}}</span><span>{{oauth}}</span><span>{{toolCount}}</span>
+                </div>
+                <div class="endpoint-label">
+                  <span aria-hidden="true">↳</span> {{endpointLabel}}
+                </div>
+                <div class="endpoint">
+                  <code id="endpoint">https://mcp.takeruf.com/china-rail/mcp</code
+                  ><button id="copy-url" type="button" aria-label="{{copyLabel}}">
+                    <span aria-hidden="true">⧉</span> {{copy}}
+                  </button>
+                </div>
+                <p
+                  class="copy-feedback"
+                  id="copy-feedback"
+                  aria-live="polite"
+                  data-success="{{copySuccess}}"
+                  data-fallback="{{copyFallback}}"
+                ></p>
+                <div class="example">
+                  <span class="comment-mark" aria-hidden="true">#</span>
+                  <div>
+                    <span>{{exampleLabel}}</span>
+                    <p>{{example}}</p>
+                  </div>
                 </div>
               </div>
-              <span
-                class="status"
-                id="health-status"
-                role="status"
-                data-pending="{{healthPending}}"
-                data-ok="{{healthOk}}"
-                data-error="{{healthError}}"
-                data-detail="{{healthDetail}}"
-                ><span class="status-dot"></span><span>{{healthPending}}</span></span
-              >
-            </div>
-            <p class="service-description">{{serviceDescription}}</p>
-            <div class="tags">
-              <span>{{readOnly}}</span><span>{{oauth}}</span><span>{{toolCount}}</span>
-            </div>
-            <div class="endpoint-label">{{endpointLabel}}</div>
-            <div class="endpoint">
-              <code id="endpoint">https://mcp.takeruf.com/china-rail/mcp</code
-              ><button id="copy-url" type="button" aria-label="{{copyLabel}}">
-                <svg
-                  width="17"
-                  height="17"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  stroke-width="1.6"
-                  aria-hidden="true"
+              <div class="card-footer">
+                <a href="{{docsUrl}}" target="_blank" rel="noopener noreferrer"
+                  >{{docs}} <span aria-hidden="true">↗</span></a
+                ><button class="text-button" id="refresh-health" type="button">
+                  <span aria-hidden="true">↻</span> {{refresh}}
+                </button>
+              </div>
+            </article>
+            <aside class="terminal" id="console" aria-labelledby="console-title">
+              <div class="panel-bar">
+                <h3 id="console-title"><span aria-hidden="true">&gt;_</span> {{terminalTitle}}</h3>
+                <span class="terminal-mark" aria-hidden="true">/</span>
+              </div>
+              <div class="terminal-body">
+                <p class="terminal-intro">{{terminalIntro}}</p>
+                <div
+                  class="command-output"
+                  id="command-output"
+                  role="log"
+                  aria-label="{{terminalOutput}}"
+                  aria-live="polite"
+                  tabindex="0"
+                  data-help="{{terminalHelp}}"
+                  data-unknown="{{terminalUnknown}}"
+                  data-lang="{{terminalLanguage}}"
                 >
-                  <rect x="8" y="8" width="12" height="12" rx="2" />
-                  <path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" /></svg
-                ><span>{{copy}}</span>
-              </button>
-            </div>
-            <p
-              class="copy-feedback"
-              id="copy-feedback"
-              aria-live="polite"
-              data-success="{{copySuccess}}"
-              data-fallback="{{copyFallback}}"
-            ></p>
-            <div class="example">
-              <span>{{exampleLabel}}</span>
-              <p>{{example}}</p>
-            </div>
-            <div class="card-footer">
-              <a href="{{docsUrl}}" target="_blank" rel="noopener noreferrer"
-                >{{docs}} <span aria-hidden="true">↗</span></a
-              ><button class="text-button" id="refresh-health" type="button">{{refresh}}</button>
-            </div>
-          </article>
+                  <p class="welcome-line">{{terminalWelcome}}</p>
+                </div>
+                <div class="command-controls" id="command-controls" hidden>
+                  <div class="command-presets" aria-label="{{terminalCommands}}">
+                    <button type="button" data-command="help">help</button
+                    ><button type="button" data-command="copy">copy</button
+                    ><button type="button" data-command="status">status</button>
+                  </div>
+                  <form
+                    id="command-form"
+                    class="command-form"
+                    autocomplete="off"
+                    spellcheck="false"
+                  >
+                    <label class="sr-only" for="command-input">{{terminalInput}}</label
+                    ><span class="prompt" aria-hidden="true">&gt;</span
+                    ><input
+                      id="command-input"
+                      name="command"
+                      placeholder="help"
+                      maxlength="160"
+                      autocapitalize="none"
+                      autocorrect="off"
+                    /><button type="submit" aria-label="{{terminalRun}}">↵</button>
+                  </form>
+                  <p class="terminal-hint">{{terminalHint}}</p>
+                </div>
+                <noscript><p class="terminal-hint">{{copyFallback}}</p></noscript>
+              </div>
+            </aside>
+          </div>
         </section>
         <section class="connection" aria-labelledby="connection-title">
-          <h2 id="connection-title">{{connectionTitle}}</h2>
+          <div class="section-heading">
+            <h2 id="connection-title"><span aria-hidden="true">./</span>{{connectionTitle}}</h2>
+            <span aria-hidden="true">README</span>
+          </div>
           <ol>
             <li>
               <span class="step">01</span>
@@ -150,8 +207,14 @@
         </section>
       </main>
       <footer>
-        <span>{{builtBy}} <a href="https://takeruf.com/{{locale}}">Takeru</a></span
-        ><span>{{footerServices}} · <span id="year">2026</span></span>
+        <span
+          >{{builtBy}}
+          <a href="https://takeruf.com/{{locale}}"
+            >Takeru <span aria-hidden="true">↗</span></a
+          ></span
+        ><span
+          >{{footerServices}} <span aria-hidden="true">/</span> <span id="year">2026</span></span
+        >
       </footer>
     </div>
   </body>

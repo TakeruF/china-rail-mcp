@@ -33,6 +33,19 @@ CSS and directory JavaScript use content hashes in their URLs to avoid stale ass
 OAuth consent follows the browser's Accept-Language preference, with its own four-language
 switcher. Switching preserves the client, redirect, state, resource, and PKCE parameters.
 
+## Terminal interface
+
+The directory is static HTML with system monospace fonts, CSS, and a small browser script.
+It does not load external fonts, images, a UI framework, or animation libraries.
+The service URL and setup instructions remain visible with JavaScript disabled.
+
+The optional browser console supports `help`, `list`, `copy`, `status`, `lang ja|zh|ko|en`,
+`clear`, and an ASCII `train`. Up/down arrows browse up to 20 previous commands.
+These are fixed directory actions: input is rendered as text and is never evaluated as shell or
+JavaScript code. Output is bounded to 40 entries. Concurrent health requests share one check;
+clearing the console also discards pending command output. Status checks only contact the MCP
+server health endpoint and do not query 12306. The interface has no continuous animation or polling.
+
 ## Configuration
 
 Set these production variables in the project's environment settings:

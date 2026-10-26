@@ -1,5 +1,5 @@
-import { build } from 'esbuild';
-import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { build, transform } from 'esbuild';
+import { cp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { buildDirectory, locales } from './locales.mjs';
@@ -9,6 +9,19 @@ const output = path.join(root, 'makers/.output');
 await rm(output, { recursive: true, force: true });
 await mkdir(path.join(output, 'cloud-functions'), { recursive: true });
 await cp(path.join(root, 'makers/public'), path.join(output, 'public'), { recursive: true });
+// Keep the browser payload small without introducing a framework or runtime dependency.
+await Promise.all(
+  ['hub.css', 'hub.js', 'locale-redirect.js'].map(async (name) => {
+    const file = path.join(output, 'public', name);
+    const css = name.endsWith('.css');
+    const result = await transform(await readFile(file, 'utf8'), {
+      loader: css ? 'css' : 'js',
+      minify: true,
+      ...(css ? {} : { target: 'es2022', format: 'iife' }),
+    });
+    await writeFile(file, result.code);
+  }),
+);
 await buildDirectory(root, output);
 await build({
   entryPoints: [path.join(root, 'cloud-functions/router.ts')],
