@@ -73,17 +73,39 @@ function unseal<T extends { exp: number }>(
 }
 
 function origin(request: Request): string {
+  const pathname = new URL(request.url).pathname;
+  const prefix =
+    pathname.startsWith('/china-rail/') ||
+    pathname === '/.well-known/oauth-authorization-server/china-rail' ||
+    pathname === '/.well-known/oauth-protected-resource/china-rail/mcp'
+      ? '/china-rail'
+      : pathname.startsWith('/api/')
+        ? '/api'
+        : '';
+  const configuredOrigin = process.env.MCP_PUBLIC_ORIGIN;
+  if (configuredOrigin) {
+    const configured = new URL(configuredOrigin);
+    if (
+      configured.protocol !== 'https:' ||
+      configured.username ||
+      configured.password ||
+      configured.pathname !== '/' ||
+      configured.search ||
+      configured.hash
+    ) {
+      throw new Error('MCP_PUBLIC_ORIGIN must be a plain HTTPS origin.');
+    }
+    return `${configured.origin}${prefix}`;
+  }
   const forwardedHost = request.headers.get('x-forwarded-host')?.split(',')[0]?.trim();
   if (forwardedHost) {
     const forwardedProto = request.headers.get('x-forwarded-proto')?.split(',')[0]?.trim();
     const forwardedOrigin = `${forwardedProto === 'http' ? 'http' : 'https'}://${forwardedHost}`;
-    return new URL(request.url).pathname.startsWith('/api/')
-      ? `${forwardedOrigin}/api`
-      : forwardedOrigin;
+    return `${forwardedOrigin}${prefix}`;
   }
   const url = new URL(request.url);
-  if (url.protocol !== 'https:') return DEFAULT_PUBLIC_ORIGIN;
-  return url.pathname.startsWith('/api/') ? `${url.origin}/api` : url.origin;
+  if (url.protocol !== 'https:') return `${DEFAULT_PUBLIC_ORIGIN}${prefix}`;
+  return `${url.origin}${prefix}`;
 }
 
 function resourceUrl(request: Request): string {
@@ -427,8 +449,10 @@ export function oauthAccessAuthorized(request: Request, secret: string): boolean
 
 export function oauthChallenge(request: Request): string {
   const base = origin(request);
-  const metadataPath = base.endsWith('/api')
-    ? '/oauth-protected-resource'
-    : '/.well-known/oauth-protected-resource/mcp';
-  return `Bearer resource_metadata="${base}${metadataPath}"`;
+  const url = new URL(base);
+  const metadataUrl =
+    url.pathname === '/api'
+      ? `${base}/oauth-protected-resource`
+      : `${url.origin}/.well-known/oauth-protected-resource${url.pathname.replace(/\/$/u, '')}/mcp`;
+  return `Bearer resource_metadata="${metadataUrl}"`;
 }

@@ -9,4 +9,6 @@ session.json
 credentials.json
 *.har
 .vercel
+.edgeone/
+makers/.output/
 .vscode/settings.json
