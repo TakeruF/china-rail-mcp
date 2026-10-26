@@ -1,0 +1,51 @@
+import { build } from 'esbuild';
+import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import path from 'node:path';
+
+const root = fileURLToPath(new URL('../../', import.meta.url));
+const output = path.join(root, 'makers/.output');
+await rm(output, { recursive: true, force: true });
+await mkdir(path.join(output, 'cloud-functions'), { recursive: true });
+await cp(path.join(root, 'makers/public'), path.join(output, 'public'), { recursive: true });
+await build({
+  entryPoints: [path.join(root, 'cloud-functions/router.ts')],
+  outfile: path.join(output, 'runtime.mjs'),
+  bundle: true,
+  platform: 'node',
+  target: 'node20',
+  format: 'esm',
+  // Makers adds its own onRequest binding; keep bundled internal handlers distinct.
+  minifyIdentifiers: true,
+});
+await writeFile(
+  path.join(output, 'cloud-functions/[[default]].js'),
+  "import { handleRequest } from '../runtime.mjs';\nexport async function onRequest({ request, env = {} }) { return handleRequest({ request, env: { ...process.env, ...env } }); }\n",
+);
+await writeFile(
+  path.join(output, 'package.json'),
+  JSON.stringify({ private: true, type: 'module' }, null, 2),
+);
+await writeFile(
+  path.join(output, 'edgeone.json'),
+  JSON.stringify(
+    {
+      buildCommand: 'echo MCP hub bundle is ready',
+      outputDirectory: 'public',
+      cloudFunctions: { regions: { overseas: ['ap-hongkong'] }, maxDuration: 120 },
+      headers: [
+        {
+          source: '/*',
+          headers: [
+            { key: 'X-Content-Type-Options', value: 'nosniff' },
+            { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+            { key: 'X-Frame-Options', value: 'DENY' },
+          ],
+        },
+      ],
+    },
+    null,
+    2,
+  ),
+);
+console.log(`EdgeOne bundle ready: ${output}`);

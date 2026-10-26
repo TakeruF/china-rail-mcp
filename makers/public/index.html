@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="TakeruのMCPサービス一覧。接続URL、使えるツール、稼働状況を確認できます。"
+    />
+    <title>MCP — Takeru</title>
+    <link
+      rel="icon"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%231c1c1c'/%3E%3Cpath d='M10 27V13l10 10 10-10v14' fill='none' stroke='white' stroke-width='3' stroke-linejoin='round'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/hub.css" />
+    <script src="/hub.js" defer></script>
+  </head>
+  <body>
+    <div class="page">
+      <header>
+        <a class="brand" href="/" aria-label="MCP トップ"
+          ><span class="brand-mark">M</span> Takeru <span class="brand-divider">/</span> MCP</a
+        >
+        <a class="quiet-link" href="https://takeruf.com" target="_blank" rel="noopener noreferrer"
+          >takeruf.com <span aria-hidden="true">↗</span></a
+        >
+      </header>
+      <main>
+        <section class="intro" aria-labelledby="title">
+          <div class="eyebrow"><span class="small-dot"></span> TOOLS FOR YOUR AI</div>
+          <h1 id="title">AIに、できることを。</h1>
+          <p>
+            必要な情報に、いつものAIからアクセス。<br />TakeruのMCPサービスを、ここにまとめました。
+          </p>
+        </section>
+        <section class="services" aria-labelledby="services-title">
+          <div class="section-heading">
+            <h2 id="services-title">サービス</h2>
+            <span>01 service</span>
+          </div>
+          <article class="service-card">
+            <div class="card-heading">
+              <div class="service-identity">
+                <div class="train-icon" aria-hidden="true">
+                  <svg
+                    width="28"
+                    height="28"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="1.5"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                  >
+                    <rect x="5" y="3" width="14" height="15" rx="4" />
+                    <path d="M5 10h14M12 3v7M8 18l-2 3m10-3 2 3" />
+                    <circle cx="8.5" cy="14" r=".75" fill="currentColor" />
+                    <circle cx="15.5" cy="14" r=".75" fill="currentColor" />
+                  </svg>
+                </div>
+                <div>
+                  <h3>China Rail</h3>
+                  <p class="service-subtitle">中国鉄道・12306</p>
+                </div>
+              </div>
+              <span class="status" id="health-status" role="status"
+                ><span class="status-dot"></span><span>状況を確認中</span></span
+              >
+            </div>
+            <p class="service-description">
+              中国鉄道の時刻表・参考運賃・余票・停車駅を検索。都市全体の駅を横断した検索にも対応しています。
+            </p>
+            <div class="tags">
+              <span>読み取り専用</span><span>OAuth認証</span><span>6 tools</span>
+            </div>
+            <div class="endpoint-label">接続URL</div>
+            <div class="endpoint">
+              <code id="endpoint">https://mcp.takeruf.com/china-rail/mcp</code
+              ><button id="copy-url" type="button" aria-label="接続URLをコピー">
+                <svg
+                  width="17"
+                  height="17"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  aria-hidden="true"
+                >
+                  <rect x="8" y="8" width="12" height="12" rx="2" />
+                  <path d="M15 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h3" /></svg
+                ><span>コピー</span>
+              </button>
+            </div>
+            <p class="copy-feedback" id="copy-feedback" aria-live="polite"></p>
+            <div class="example">
+              <span>たとえば、こんな質問</span>
+              <p>「明日、上海から杭州へ行く列車を、出発時刻と料金つきで教えて」</p>
+            </div>
+            <div class="card-footer">
+              <a
+                href="https://github.com/TakeruF/china-rail-mcp"
+                target="_blank"
+                rel="noopener noreferrer"
+                >ドキュメント・ソース <span aria-hidden="true">↗</span></a
+              ><button class="text-button" id="refresh-health" type="button">
+                稼働状況を再確認
+              </button>
+            </div>
+          </article>
+        </section>
+        <section class="connection" aria-labelledby="connection-title">
+          <h2 id="connection-title">接続は、3ステップ。</h2>
+          <ol>
+            <li>
+              <span class="step">01</span>
+              <div>
+                <h3>接続URLをコピー</h3>
+                <p>使いたいサービスのURLをコピーします。</p>
+              </div>
+            </li>
+            <li>
+              <span class="step">02</span>
+              <div>
+                <h3>MCPクライアントに追加</h3>
+                <p>URLを登録し、OAuth画面で接続用パスワードを入力します。</p>
+              </div>
+            </li>
+            <li>
+              <span class="step">03</span>
+              <div>
+                <h3>新しい会話で使う</h3>
+                <p>接続を有効にして、調べたいことを質問してください。</p>
+              </div>
+            </li>
+          </ol>
+          <p class="note">
+            接続にはサービス管理者が発行したパスワードが必要です。運賃・余票は照会時点の参考情報です。重要な旅行情報は公式12306で確認してください。予約・購入・支払いには対応していません。
+          </p>
+        </section>
+      </main>
+      <footer>
+        <span>Built by <a href="https://takeruf.com">Takeru</a></span
+        ><span>MCP services · <span id="year">2026</span></span>
+      </footer>
+    </div>
+  </body>
+</html>

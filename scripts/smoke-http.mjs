@@ -19,13 +19,13 @@ const endpoints = {
   authorization: new URL(
     vercelStyle
       ? '/.well-known/oauth-authorization-server/api'
-      : '/.well-known/oauth-authorization-server',
+      : `/.well-known/oauth-authorization-server${basePath}`,
     origin,
   ),
   resource: new URL(
     vercelStyle
       ? `${basePath}/oauth-protected-resource`
-      : '/.well-known/oauth-protected-resource/mcp',
+      : `/.well-known/oauth-protected-resource${basePath}/mcp`,
     origin,
   ),
 };

@@ -129,6 +129,10 @@ reference fares for these representative results:
 
 ## Quick start
 
+The hosted MCP directory is at [mcp.takeruf.com](https://mcp.takeruf.com). The China Rail endpoint
+is `https://mcp.takeruf.com/china-rail/mcp` and requires OAuth authorization with a connection
+password. For deployment and maintenance, see [the EdgeOne hub guide](makers/README.md).
+
 Not sure whether to use ChatGPT, Qwen Code, TRAE, Coze, or Claude? Start with Silkroad MCP's
 [client compatibility guide](https://takeruf.github.io/silkroad-mcp/en/clients/). Use the
 [self-hosting guide](docs/SELF_HOSTING.en.md) for this project's deployment steps.

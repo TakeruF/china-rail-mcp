@@ -33,10 +33,24 @@ export async function onRequest({ request, env }: EdgeOneContext): Promise<Respo
     return json(401, { error: 'Unauthorized' }, { 'www-authenticate': oauthChallenge(request) });
   }
 
+  // EdgeOne request bodies must be consumed before asynchronous transport setup.
+  let parsedBody: unknown;
+  if (request.method === 'POST') {
+    try {
+      parsedBody = await request.json();
+    } catch {
+      return json(400, {
+        jsonrpc: '2.0',
+        id: null,
+        error: { code: -32700, message: 'Parse error' },
+      });
+    }
+  }
+
   const server = createServer(provider);
   const transport = new WebStandardStreamableHTTPServerTransport({
     enableJsonResponse: true,
   });
   await server.connect(transport);
-  return transport.handleRequest(request);
+  return transport.handleRequest(request, { parsedBody });
 }

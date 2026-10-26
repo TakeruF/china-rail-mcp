@@ -299,6 +299,12 @@ China Rail MCP 向 Codex、Claude Desktop、ChatGPT 集成等兼容 MCP 的客�
 
 来自 12306 查询页面的匿名 Cookie 仅保存在内存中，上游通常会在十分钟后使其失效。
 
+## 托管 MCP 入口
+
+[mcp.takeruf.com](https://mcp.takeruf.com) 提供 MCP 目录与连接信息。China Rail 的连接地址为
+`https://mcp.takeruf.com/china-rail/mcp`，需要使用连接密码完成 OAuth 授权。
+部署与维护说明见 [EdgeOne hub 指南](makers/README.md)。
+
 ## 可用工具
 
 | 工具                  | 用途                                                    |
