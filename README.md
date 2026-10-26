@@ -277,7 +277,7 @@ docker build -t china-rail-mcp:local .
 | 功能     | 状态 | 时效与缓存                             |
 | -------- | ---- | -------------------------------------- |
 | 车站搜索 | 支持 | 12306 车站资源；进程内最多缓存 24 小时 |
-| 时刻表   | 支持 | 实时公共查询；仅返回精确车站代码结果   |
+| 时刻表   | 支持 | 实时公共查询；明确区分车站与城市范围   |
 | 经停站   | 支持 | 实时车次及经停站查询                   |
 | 票价     | 支持 | 当前查询结果中的参考票价               |
 | 余票     | 支持 | 实时查询结果；不缓存为“当前余票”       |
@@ -305,7 +305,7 @@ China Rail MCP 向 Codex、Claude Desktop、ChatGPT 集成等兼容 MCP 的客�
 | --------------------- | ------------------------------------------------------- |
 | `get_provider_status` | 返回已验证能力和匿名会话安全策略                        |
 | `search_stations`     | 搜索车站及其 12306 代码；不会把一座城市静默当成单一车站 |
-| `search_trains`       | 分页返回精确站点间的时刻、票价和余票                    |
+| `search_trains`       | 按车站或城市范围查询并合并时刻、票价和余票，分页返回    |
 | `get_train_details`   | 按精确车次返回完整经停站顺序                            |
 | `get_availability`    | 返回指定日期、车次和站点区间的标准化余票                |
 | `compare_trains`      | 筛选并排序分页行程；不作主观推荐                        |
@@ -322,6 +322,28 @@ China Rail MCP 向 Codex、Claude Desktop、ChatGPT 集成等兼容 MCP 的客�
 `search_trains` 默认返回 20 条，`compare_trains` 默认返回 10 条。两者均支持
 `limit`（1–50）和 `offset`，响应包含 `total`、`returned`、`hasMore`、
 `nextOffset` 和 `journeys`。
+
+MCP 服务声明 `tools.listChanged: true`。在活动连接中，新增、更新、启用、禁用或删除
+已注册工具时，SDK 会发送 `notifications/tools/list_changed`；客户端收到后应重新调用
+`tools/list`，刷新工具说明和输入参数。当前无状态 HTTP 适配器为每个请求创建独立的
+服务及传输实例，无法跨请求或工作进程推送变更。更新服务包后，需要重新连接或重启，
+并再次获取 `tools/list` 以加载新定义。
+
+两者都支持 `scope: "station" | "city"`，默认 `station`，按精确站名或代码查询。
+**用户指定城市时，必须使用 `city` 范围，不要限定到某一座车站。**
+例如 `from: "上海", to: "杭州", scope: "city"` 会按官方城市分组查询上海虹桥、
+上海南、上海等站与杭州各站的全部组合，合并去重后再筛选、排序和分页。
+`fromScope` / `toScope` 可分别覆盖范围，例如上海全市到杭州东使用
+`fromScope: "city", toScope: "station"`。
+
+响应中的 `searchScope`、`searchedStations` 和 `excludedStations` 均按 `from` / `to`
+分组。`searchedStations` 列出实际查询的车站，即使没有车次也会保留；`excludedStations`
+列出因精确车站范围而排除的同城车站，并标记 `reason: "station_scope"`。
+城市范围不静默截断站点；任一站点组合查询失败时，整个搜索返回错误，避免把部分结果当作完整结果。
+
+每条行程的 `isPotentialDetour` 表示所需时间是否达到完整搜索结果中最短时长的三倍，
+且至少多出 120 分钟。基准在筛选、分页前计算，判定参数包含在 `detourHeuristic` 中。
+这只是时长异常提示，不能证明实际线路迂回；单条结果或所有车次都很慢时，无法识别缺少快速基准的迂回。
 
 车次类型筛选不区分大小写，支持 `G`、`D`、`C`、`S`、`Z`、`T`、
 `K`、`L`、`Y` 和 `OTHER`。席别类型会明确区分动卧、高级软卧和软卧。

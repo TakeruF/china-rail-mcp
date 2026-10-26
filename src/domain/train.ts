@@ -12,6 +12,7 @@ export interface TrainJourney {
   departureTime: string;
   arrivalTime: string;
   durationMinutes: number;
+  isPotentialDetour?: boolean;
   trainType: TrainType;
   trainTypeLabel: string;
   upstreamTrainType?: string;

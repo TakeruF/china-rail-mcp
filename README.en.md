@@ -270,7 +270,7 @@ never persists or returns cookie values.
 | Capability        | Status    | Freshness/caching                                         |
 | ----------------- | --------- | --------------------------------------------------------- |
 | Station search    | Supported | Official station asset; in-process cache up to 24 hours   |
-| Timetable         | Supported | Live official query; exact station-code results only      |
+| Timetable         | Supported | Live official queries with explicit station or city scope |
 | Train stops       | Supported | Live official train-number and stop-sequence query        |
 | Fares             | Supported | Current compact fare data from the official ticket result |
 | Seat availability | Supported | Live official result; not cached as current               |
@@ -362,7 +362,7 @@ The official anonymous 12306 session remains process-memory-only and is never ex
 | --------------------- | ------------------------------------------------------------------------------------- |
 | `get_provider_status` | Return verified capabilities and the anonymous-session safety policy.                 |
 | `search_stations`     | Find stations and their 12306 codes. A city is never silently treated as one station. |
-| `search_trains`       | Return paginated exact-station timetables, fares, and remaining-ticket data.          |
+| `search_trains`       | Merge and paginate station- or city-scoped timetables, fares, and remaining tickets.  |
 | `get_train_details`   | Resolve an exact train number and return its complete official stop sequence.         |
 | `get_availability`    | Return normalized availability for an exact station pair, train, and date.            |
 | `compare_trains`      | Filter/sort paginated journeys; it does not make subjective recommendations.          |
@@ -380,6 +380,32 @@ Example prompts:
 `limit` (1-50) and `offset`; filters and comparison sorting are applied before paging. Their
 response includes `total`, `returned`, `hasMore`, `nextOffset`, and `journeys`, so clients can
 continue without requesting an unbounded payload.
+
+The MCP server advertises `tools.listChanged: true`. On an active connection, adding, updating,
+enabling, disabling, or removing a registered tool emits `notifications/tools/list_changed`
+through the SDK. Clients should call `tools/list` again to refresh tool descriptions and input
+schemas. The current stateless HTTP adapter creates a separate server/transport for each
+request, so it cannot push changes across requests or workers. Reconnect/restart after updating
+the server bundle and fetch `tools/list` again to discover the new definitions.
+
+Both tools accept `scope: "station" | "city"`, defaulting to `station` for exact station names
+or codes. **When the user specifies a city, use city scope; do not restrict the search to a
+particular station.** For example, `from: "上海", to: "杭州", scope: "city"` queries every pair
+in the official city groups, including 上海虹桥, 上海南, and 上海, then merges and deduplicates
+journeys before filtering, sorting, and pagination. `fromScope` / `toScope` override individual
+endpoints; use `fromScope: "city", toScope: "station"` for all Shanghai stations to 杭州东.
+
+Responses include `searchScope`, `searchedStations`, and `excludedStations`, grouped by `from`
+and `to`. Searched stations remain listed even if they return no trains. Excluded stations are
+other stations in the same official city group omitted by station scope, with
+`reason: "station_scope"`. City searches never silently truncate the station list. If any pair
+fails, the entire search returns an error so partial results cannot imply complete coverage.
+
+Each journey includes `isPotentialDetour`: true when its duration is at least three times the
+shortest duration in the complete route result and at least 120 minutes longer. The baseline
+is calculated before filters and pagination; `detourHeuristic` reports the criteria. This is a
+duration-based indication, not proof of a detour. A single journey or uniformly slow results
+provide no faster baseline from which to detect a detour.
 
 Train-type filters are case-insensitive and accept `G`, `D`, `C`, `S`, `Z`, `T`, `K`, `L`, `Y`,
 and `OTHER`. Each journey includes both the normalized `trainType` and a Chinese

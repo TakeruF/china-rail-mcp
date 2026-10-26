@@ -16,6 +16,7 @@ import {
 } from '../src/utils/date.js';
 import { normalizeAvailability, normalizeSeatClass, parseFare } from '../src/utils/seat.js';
 import { classifyTrainNumber } from '../src/utils/train.js';
+import { searchJourneys } from '../src/tools/search.js';
 const stations = parseStationScript(readFileSync('fixtures/stations.js', 'utf8'));
 const trains = parseTrainResults(JSON.parse(readFileSync('fixtures/left-ticket.json', 'utf8')));
 const dTicketPayload = readFileSync('fixtures/left-ticket-d.json', 'utf8');
@@ -225,6 +226,57 @@ describe('provider capabilities', () => {
     headers.append('set-cookie', 'BIGipServerotn=load-balancer; Path=/');
     return new Response('<html></html>', { status: 200, headers });
   }
+
+  it('merges every official city station pair while preserving exact-code filtering in the provider', async () => {
+    const pairs: string[] = [];
+    const provider = new Rail12306Provider(async (input) => {
+      const url = new URL(String(input));
+      if (url.pathname.endsWith('station_name.js')) return new Response(stationScript);
+      if (url.pathname.endsWith('leftTicket/init')) return sessionResponse();
+      if (url.pathname.endsWith('leftTicket/queryG')) {
+        const from = url.searchParams.get('leftTicketDTO.from_station')!;
+        const to = url.searchParams.get('leftTicketDTO.to_station')!;
+        pairs.push(`${from}-${to}`);
+        const payload = JSON.parse(ticketPayload);
+        const fields = payload.data.result[0].split('|');
+        fields[6] = from;
+        fields[7] = to;
+        payload.data.result = [fields.join('|')];
+        // The upstream city-area response may contain rows outside the exact pair.
+        const unrelated = [...fields];
+        unrelated[6] = 'NGH';
+        payload.data.result.push(unrelated.join('|'));
+        payload.data.map = Object.fromEntries(
+          stations.map((station) => [station.code, station.name]),
+        );
+        return Response.json(payload);
+      }
+      throw new Error(`Unexpected URL ${url}`);
+    }, fixedNow);
+    const result = await searchJourneys(provider, {
+      from: '上海',
+      to: '杭州',
+      scope: 'city',
+      date: '2026-08-30',
+    });
+    expect(pairs).toEqual(['AOH-HGH', 'AOH-HZH', 'SHH-HGH', 'SHH-HZH', 'SNH-HGH', 'SNH-HZH']);
+    expect(result.journeys).toHaveLength(6);
+    expect(new Set(result.journeys.map((journey) => journey.departureStation))).toEqual(
+      new Set(['上海虹桥', '上海', '上海南']),
+    );
+    expect(result.excludedStations).toEqual({ from: [], to: [] });
+
+    pairs.length = 0;
+    const exact = await searchJourneys(provider, {
+      from: '上海',
+      to: '杭州',
+      scope: 'station',
+      date: '2026-08-30',
+    });
+    expect(pairs).toEqual(['SHH-HZH']);
+    expect(exact.journeys).toHaveLength(1);
+    expect(exact.journeys[0]).toMatchObject({ departureStation: '上海', arrivalStation: '杭州' });
+  });
 
   it('uses only an in-memory official anonymous session and reuses it', async () => {
     let sessionInitializations = 0;
