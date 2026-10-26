@@ -2,6 +2,7 @@ import { spawn } from 'node:child_process';
 import { readFile, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { locales } from './locales.mjs';
 
 const output = fileURLToPath(new URL('../.output/', import.meta.url));
 const files = [
@@ -12,6 +13,8 @@ const files = [
   'public/index.html',
   'public/hub.css',
   'public/hub.js',
+  'public/locale-redirect.js',
+  ...locales.map(({ code }) => `public/${code}/index.html`),
 ];
 // Upload only the explicit deployment files. Local CLI links and .env files stay local.
 // A deterministic, uncompressed ZIP avoids an additional packaging dependency.

@@ -2,11 +2,12 @@
 
 [简体中文](SELF_HOSTING.md) | **English**
 
-This guide covers three reproducible setups:
+This guide covers four reproducible setups:
 
 1. local stdio, for MCP clients running on the same computer;
 2. Docker stdio, using a fixed Node.js 20 container;
-3. a private Vercel deployment, for clients that require a public HTTPS MCP URL.
+3. an EdgeOne Makers deployment with the directory and namespaced HTTPS MCP endpoint;
+4. a private Vercel deployment as an alternative HTTPS host.
 
 The server never needs a 12306 account, user cookie, CAPTCHA, SMS code, or payment data.
 
@@ -80,6 +81,27 @@ Use the container as a stdio MCP command:
 
 The container needs outbound HTTPS access but no mounted credentials or writable volume.
 
+## EdgeOne Makers deployment
+
+The current hosted service is [mcp.takeruf.com](https://mcp.takeruf.com). With a connection
+password issued by its administrator, add `https://mcp.takeruf.com/china-rail/mcp` to your
+remote MCP client and complete OAuth. The directory and consent screen support Japanese,
+Chinese, Korean, and English; changing language does not change the MCP endpoint.
+
+To operate a separate instance, follow [the EdgeOne hub guide](../makers/README.md). Use your
+own project, stable HTTPS origin, and unique secret environment variable:
+
+- `MCP_HTTP_BEARER_TOKEN`: the connection password and OAuth signing secret;
+- `MCP_PUBLIC_ORIGIN`: your HTTPS origin, with no path, query, or fragment.
+
+Build with `npm run build:edgeone`, deploy with
+`npm run deploy:edgeone -- YOUR_PROJECT_NAME`, and run
+`npm run smoke:http -- https://YOUR_HOST/china-rail`. That smoke test checks server health,
+OAuth discovery, and authentication protection; it does not query live 12306 data. Connect
+`https://YOUR_HOST/china-rail/mcp` with OAuth and verify an actual tool call separately.
+The bundled directory's connection URL and canonical links target `mcp.takeruf.com`; customize
+them in `makers/templates/directory.html` and `makers/public/index.html` for a separate public hub.
+
 ## Private Vercel deployment
 
 The repository includes `vercel.json` and the catch-all API entry required for the HTTP MCP and
@@ -120,7 +142,7 @@ The generated access and refresh tokens are signed and self-contained. This pers
 does not require a database. Rotating `MCP_HTTP_BEARER_TOKEN` invalidates every existing client,
 authorization code, access token, and refresh token for that deployment.
 
-### Using it on a phone
+## Using it on a phone
 
 The phone does not connect directly to a stdio process on your computer. It connects to the HTTPS
 MCP deployed above. Complete the connection and OAuth first in a web or desktop client that
@@ -129,7 +151,7 @@ account, select the connection, and make a real query.
 
 Verify these as three separate states:
 
-1. the Vercel deployment and unauthenticated smoke test succeed;
+1. the HTTPS deployment and unauthenticated smoke test succeed;
 2. the AI-client account completes OAuth and can call tools on web or desktop;
 3. the same account can see the connection and call a tool on mobile.
 

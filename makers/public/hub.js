@@ -8,16 +8,17 @@ document.getElementById('year').textContent = String(new Date().getFullYear());
 copy.addEventListener('click', async () => {
   try {
     await navigator.clipboard.writeText(endpoint.textContent.trim());
-    feedback.textContent = '接続URLをコピーしました。';
+    feedback.textContent = feedback.dataset.success;
   } catch {
-    feedback.textContent = 'URLを選択してコピーしてください。';
+    feedback.textContent = feedback.dataset.fallback;
   }
 });
 
 async function checkHealth() {
   refresh.disabled = true;
   status.removeAttribute('data-state');
-  status.lastElementChild.textContent = '状況を確認中';
+  status.removeAttribute('title');
+  status.lastElementChild.textContent = status.dataset.pending;
   try {
     const response = await fetch('/china-rail/health', {
       cache: 'no-store',
@@ -27,12 +28,11 @@ async function checkHealth() {
     if (!response.ok || health.status !== 'ok' || health.service !== 'china-rail-mcp')
       throw new Error('Unavailable');
     status.dataset.state = 'ok';
-    status.lastElementChild.textContent = 'サーバー応答あり';
-    status.title =
-      'MCPサーバーの応答を確認しました。12306の列車データ取得状態は検索時に確認されます。';
+    status.lastElementChild.textContent = status.dataset.ok;
+    status.title = status.dataset.detail;
   } catch {
     status.dataset.state = 'error';
-    status.lastElementChild.textContent = '応答を確認できません';
+    status.lastElementChild.textContent = status.dataset.error;
   } finally {
     refresh.disabled = false;
   }

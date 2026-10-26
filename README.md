@@ -120,6 +120,17 @@ codex plugin marketplace add TakeruF/china-rail-mcp --ref main --sparse .agents/
 
 ## 快速开始
 
+### 托管 MCP 入口
+
+[mcp.takeruf.com](https://mcp.takeruf.com) 在 EdgeOne 香港节点托管 MCP 目录与 China Rail。
+目录支持[日本語](https://mcp.takeruf.com/ja)、[中文](https://mcp.takeruf.com/zh)、
+[한국어](https://mcp.takeruf.com/ko)和[English](https://mcp.takeruf.com/en)。首页按浏览器语言选择，
+各页面也可手动切换；OAuth 授权页同样支持四种语言。
+
+所有语言使用同一连接地址：`https://mcp.takeruf.com/china-rail/mcp`。
+需要服务管理员提供的连接密码并完成 OAuth；已有密码时，无需在本地安装或自行部署。
+部署与维护说明见 [EdgeOne hub 指南](makers/README.md)。
+
 不确定该用 ChatGPT、Qwen Code、TRAE、扣子还是 Claude？请先查看 Silkroad MCP 的
 [客户端兼容性指南](https://takeruf.github.io/silkroad-mcp/zh/clients/)。本项目的具体部署
 方式见[自托管指南](docs/SELF_HOSTING.md)。
@@ -163,8 +174,9 @@ AI 应以一次真实的 MCP 工具调用作为完成标准。若它只能操作
 ### 想在手机上使用？让 AI 部署私人服务器
 
 本地 stdio 方式只能供运行服务器的电脑使用。若要从手机访问，需要把 China Rail MCP
-部署为持续在线的 HTTPS 服务，再把它连接到支持远程 MCP 的 AI 客户端。你需要 GitHub、
-Vercel，以及支持自定义远程 MCP 的客户端账号；所用服务可能有套餐或费用限制。
+部署为持续在线的 HTTPS 服务，再把它连接到支持远程 MCP 的 AI 客户端。已有上方托管服务的
+连接密码时，直接使用其地址即可。自行托管需要 EdgeOne 账号及支持自定义远程 MCP 的
+客户端账号；所用服务可能有套餐或费用限制。Vercel 仍可作为替代方案。
 
 把下面整段提示词交给能够操作终端和浏览器的编程 AI：
 
@@ -174,21 +186,24 @@ Vercel，以及支持自定义远程 MCP 的客户端账号；所用服务可能
 
 请直接执行操作，不要只给我教程，并遵守以下要求：
 
-1. 先阅读仓库最新的 README、`docs/SELF_HOSTING.md` 和当前客户端的官方远程 MCP
-   文档。确认我的 GitHub、Vercel 和 AI 客户端账号是否具备所需功能。产生费用、创建
+1. 先阅读仓库最新的 README、`makers/README.md`、`docs/SELF_HOSTING.md` 和客户端
+   的官方远程 MCP 文档。确认我的 EdgeOne 和 AI 客户端账号是否具备所需功能。产生费用、创建
    云项目、登录账号或进入 Production 前，先说明影响并征得我同意。
 2. 在安全的临时或工作目录克隆仓库，运行 `npm ci` 和 `npm run verify`。不要修改、
    提交或推送项目源码。
-3. 使用仓库自带的 Vercel 配置创建个人项目。生成唯一且强度足够的
-   `MCP_HTTP_BEARER_TOKEN`，只把它保存为 Vercel Production 环境变量。不要把密钥写入
+3. 按 `makers/README.md` 创建个人 EdgeOne Makers 项目。生成唯一且强度足够的
+   `MCP_HTTP_BEARER_TOKEN`，保存为 Production 密钥环境变量。将 `MCP_PUBLIC_ORIGIN`
+   设置为自己的固定 HTTPS 源站地址，不要复用其他部署的密码。不要把密钥写入
    源码、`.env`、Git、聊天、截图、部署日志或最终报告，也不要让我把密钥发到聊天中；
-   如果必须由我输入，请让我直接粘贴到 Vercel 的隐藏输入框或部署站点的 OAuth 页面。
-4. 部署当前 `main` 提交到 Production，记录固定的 HTTPS 主机名。不要把 Preview URL
-   当作最终地址。运行 `npm run smoke:http -- https://实际主机/api`，确认 health、OAuth
-   元数据和受保护资源元数据返回 200，未认证的 `/api/mcp` 按预期返回带发现信息的 401。
+   如果必须由我输入，请让我直接粘贴到 EdgeOne 的隐藏输入框或部署站点的 OAuth 页面。
+4. 对当前 `main` 提交运行 `npm run build:edgeone`，然后运行
+   `npm run deploy:edgeone -- 我的项目名`。记录固定的 Production HTTPS 主机名，
+   不要把 Preview URL 当作最终地址。运行
+   `npm run smoke:http -- https://实际主机/china-rail`，确认 health、OAuth 元数据和
+   受保护资源元数据返回 200，未认证的 `/china-rail/mcp` 按预期返回带发现信息的 401。
    401 在这一步表示认证保护正常，不是部署失败。
 5. 使用当前客户端真实支持的远程 MCP 添加流程，将
-   `https://实际主机/api/mcp` 连接到我的账号并完成 OAuth。ChatGPT 的界面和功能可能
+   `https://实际主机/china-rail/mcp` 连接到我的账号并完成 OAuth。ChatGPT 的界面和功能可能
    随账号或版本变化；请核对当前官方文档和实际界面，不要猜测菜单名称或声称所有账号
    都支持。如果需要我操作，只让我完成登录、授权或最后一个界面步骤。
 6. 先在网页或桌面客户端实际调用 `get_provider_status` 和 `search_stations`。然后在手机
@@ -197,7 +212,7 @@ Vercel，以及支持自定义远程 MCP 的客户端账号；所用服务可能
 7. 如果手机端没有显示该连接，先检查客户端版本、账号、工作区权限和当前产品支持范围。
    不要为了绕过限制而公开服务器或关闭认证。若当前账号或手机应用确实不支持，应明确
    报告这个产品限制，同时保留已经安全部署且可在支持客户端使用的服务。
-8. 完成后只报告：Vercel 项目名和 HTTPS MCP URL（不含任何密钥）、Production 部署状态、
+8. 完成后只报告：EdgeOne 项目名和 HTTPS MCP URL（不含任何密钥）、Production 部署状态、
    冒烟测试结果、网页/桌面端调用结果、手机端调用结果、可能产生费用的位置，以及如何
    轮换或撤销访问。绝对不要显示 `MCP_HTTP_BEARER_TOKEN`。
 ```
@@ -263,8 +278,9 @@ docker build -t china-rail-mcp:local .
 }
 ```
 
-如果客户端必须连接公网 HTTPS 地址，可部署到自己的 Vercel 项目，并使用每位部署者
-独有的 `MCP_HTTP_BEARER_TOKEN` 保护访问。完整步骤、端点验证和 ChatGPT
+如果客户端必须连接公网 HTTPS 地址，可以使用已获连接密码的托管服务，或按
+[EdgeOne hub 指南](makers/README.md)部署自己的项目，并设置独有的
+`MCP_HTTP_BEARER_TOKEN`。Vercel 仍可使用。完整步骤、端点验证和 ChatGPT
 开发者模式配置请参阅[自托管指南](docs/SELF_HOSTING.md)。
 
 ## 当前实时数据状态
@@ -287,6 +303,9 @@ docker build -t china-rail-mcp:local .
 中国标准时间（`Asia/Shanghai`）解释。公共接口没有正式文档，重要出行信息请以
 官方渠道为准。
 
+2026-10-26 还在正式 EdgeOne 地址验证了 OAuth、MCP 初始化和上海全市到杭州东的
+实时查询，返回了带票价、余票的车次。这是当次观测，不代表持续可用性保证。
+
 ## 功能边界
 
 China Rail MCP 向 Codex、Claude Desktop、ChatGPT 集成等兼容 MCP 的客户端提供
@@ -298,12 +317,6 @@ China Rail MCP 向 Codex、Claude Desktop、ChatGPT 集成等兼容 MCP 的客�
 - 后台轮询、批量采集或规避上游限流。
 
 来自 12306 查询页面的匿名 Cookie 仅保存在内存中，上游通常会在十分钟后使其失效。
-
-## 托管 MCP 入口
-
-[mcp.takeruf.com](https://mcp.takeruf.com) 提供 MCP 目录与连接信息。China Rail 的连接地址为
-`https://mcp.takeruf.com/china-rail/mcp`，需要使用连接密码完成 OAuth 授权。
-部署与维护说明见 [EdgeOne hub 指南](makers/README.md)。
 
 ## 可用工具
 
@@ -416,9 +429,10 @@ MCP Registry 标识为 `io.github.takeruf/china-rail-mcp`，`server.json` 已包
 
 ### EdgeOne Makers
 
-可选入口 `cloud-functions/mcp.ts` 在 `/mcp` 提供无状态 Streamable HTTP，
-`cloud-functions/health.ts` 在 `/health` 提供健康检查。部署为 EdgeOne Makers
-Node.js 云函数时必须设置 `MCP_HTTP_BEARER_TOKEN`；未设置时 MCP 路由返回 `503`，
+当前 hub 使用 `cloud-functions/router.ts` 提供 `/china-rail/mcp`、`/china-rail/health`
+和带命名空间的 OAuth 端点，以及四语言目录。旧版根路径 `/mcp`、`/health` 仍兼容，
+但 OAuth 资源地址独立。构建、部署和域名配置见 [hub 指南](makers/README.md)。
+必须设置 `MCP_HTTP_BEARER_TOKEN`；未设置时 MCP 路由返回 `503`，
 不会匿名开放。该密钥也是 ChatGPT 自定义应用所用 OAuth 2.1 Authorization Code +
 PKCE 流程的个人连接密码。12306 匿名会话仍仅保存在进程内存中。
 

@@ -2,11 +2,12 @@
 
 **简体中文** | [English](SELF_HOSTING.en.md)
 
-本指南介绍三种可重复部署方式：
+本指南介绍四种可重复部署方式：
 
 1. 本地 stdio：供同一台电脑上的 MCP 客户端使用；
 2. Docker stdio：在固定的 Node.js 20 容器中运行；
-3. 私有 Vercel 部署：供必须使用公网 HTTPS MCP 地址的客户端连接。
+3. EdgeOne Makers：托管目录和带命名空间的 HTTPS MCP 服务；
+4. 私有 Vercel 部署：另一种 HTTPS 托管选择。
 
 服务器不需要 12306 账号、用户 Cookie、验证码、短信或支付信息。
 
@@ -83,7 +84,26 @@ docker build -t china-rail-mcp:local .
 
 容器需要访问外部 HTTPS，但不需要挂载凭据或可写数据卷。
 
-## 方式三：私有 Vercel 部署
+## 方式三：EdgeOne Makers
+
+当前托管服务为 [mcp.takeruf.com](https://mcp.takeruf.com)。获得管理员提供的连接密码后，
+在远程 MCP 客户端添加 `https://mcp.takeruf.com/china-rail/mcp` 并完成 OAuth。
+目录和授权页均支持日、中、韩、英四种语言，切换语言不会改变 MCP 连接地址。
+
+自行托管时，请按 [EdgeOne hub 指南](../makers/README.md)使用自己的项目、固定 HTTPS
+域名和独立密钥，并设置 Production 环境变量：
+
+- `MCP_HTTP_BEARER_TOKEN`：连接密码，同时用于签发 OAuth 令牌；
+- `MCP_PUBLIC_ORIGIN`：自己的 HTTPS 源站地址，不含路径、查询参数或片段。
+
+运行 `npm run build:edgeone` 构建，`npm run deploy:edgeone -- 自己的项目名` 部署，
+然后运行 `npm run smoke:http -- https://实际主机/china-rail`。冒烟测试验证服务器状态、
+OAuth 发现信息及认证保护，不查询实时12306数据。通过 OAuth 连接
+`https://实际主机/china-rail/mcp` 后，另行验证实际工具调用。
+内置目录的连接地址和 canonical 链接指向 `mcp.takeruf.com`；另设公开目录时，请相应调整
+`makers/templates/directory.html` 和 `makers/public/index.html`。
+
+## 方式四：私有 Vercel 部署
 
 仓库已包含 `vercel.json`，以及 HTTP MCP 和 OAuth 端点所需的 catch-all API 入口。
 每位部署者必须生成自己的唯一密钥。不要使用示例值，也不要把密钥写入 issue、提交、
@@ -123,7 +143,7 @@ docker build -t china-rail-mcp:local .
 `MCP_HTTP_BEARER_TOKEN` 会使该部署之前签发的客户端凭据、授权码、访问令牌和
 刷新令牌全部失效。
 
-### 在手机上使用
+## 在手机上使用
 
 手机不会直接连接电脑上的 stdio 进程；它连接上面部署的 HTTPS MCP。先在当前支持添加
 远程 MCP 的网页或桌面客户端中完成连接和 OAuth，再用同一账号打开手机应用的新对话，
@@ -131,7 +151,7 @@ docker build -t china-rail-mcp:local .
 
 请把以下三种状态分开验证：
 
-1. Vercel 部署和未认证冒烟测试成功；
+1. HTTPS 部署和未认证冒烟测试成功；
 2. AI 客户端账号完成 OAuth，并能在网页或桌面端调用工具；
 3. 同一账号能在手机端看到该连接并调用工具。
 
