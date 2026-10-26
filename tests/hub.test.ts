@@ -73,9 +73,34 @@ describe('EdgeOne MCP hub', () => {
       scope: 'mcp:read',
       state: 'test-state',
     });
-    const consent = await call(`/china-rail/authorize?${query}`);
+    const consent = await call(`/china-rail/authorize?${query}`, {
+      headers: { 'accept-language': 'ja-JP, en;q=0.5' },
+    });
     expect(consent.status).toBe(200);
-    const html = await consent.text();
+    let html = await consent.text();
+    expect(html).toContain('<html lang="ja">');
+    expect(html).toContain('接続用パスワード');
+    // Switching languages must preserve every OAuth parameter and the signed consent.
+    const initialProof = /name="proof" value="([^"]+)"/u.exec(html)![1]!;
+    for (const [lang, label] of [
+      ['zh-CN', '连接密码'],
+      ['ko', '연결 비밀번호'],
+      ['en', 'Connection password'],
+    ]) {
+      const link = new RegExp(`href="([^"]+)" lang="${lang}"`, 'u')
+        .exec(html)![1]!
+        .replaceAll('&amp;', '&');
+      const switchedUrl = new URL(link, origin);
+      for (const [key, value] of query) expect(switchedUrl.searchParams.get(key)).toBe(value);
+      const switched = await call(`${switchedUrl.pathname}${switchedUrl.search}`, {
+        headers: { 'accept-language': 'ja-JP' },
+      });
+      expect(switched.status).toBe(200);
+      html = await switched.text();
+      expect(html).toContain(`<html lang="${lang}">`);
+      expect(html).toContain(label);
+      expect(/name="proof" value="([^"]+)"/u.exec(html)![1]).toBe(initialProof);
+    }
     expect(html).toContain('action="/china-rail/authorize"');
     const serialized = /name="request" value="([^"]+)"/u.exec(html)![1]!.replaceAll('&amp;', '&');
     const proof = /name="proof" value="([^"]+)"/u.exec(html)![1]!;

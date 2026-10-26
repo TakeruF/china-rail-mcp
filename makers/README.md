@@ -5,7 +5,8 @@ only China Rail. Other MCP services are not migrated or exposed by this deployme
 
 | URL                                                                  | Purpose                                      |
 | -------------------------------------------------------------------- | -------------------------------------------- |
-| `/`                                                                  | Directory, connection URL, and server health |
+| `/`                                                                  | Browser-language selection, English fallback |
+| `/ja`, `/zh`, `/ko`, `/en`                                           | Localized directory, URL, and server health  |
 | `/china-rail/mcp`                                                    | Authenticated, read-only MCP endpoint        |
 | `/china-rail/health`                                                 | Server health; does not query 12306          |
 | `/china-rail/register`, `/china-rail/authorize`, `/china-rail/token` | OAuth registration and authorization         |
@@ -16,6 +17,21 @@ The EdgeOne project is `takeruf-mcp` (`makers-tyekugxoemvr`), deployed to the ov
 availability zone with Cloud Functions in Hong Kong (`ap-hongkong`). The runtime limit is
 120 seconds. Existing root-level endpoints remain available for compatibility, with distinct
 OAuth resource URLs. A token issued for `/china-rail/mcp` is not accepted by `/mcp`.
+
+## Languages
+
+The directory uses the same language paths as takeruf.com: `/ja`, `/zh`, `/ko`, and `/en`.
+The root chooses the first supported browser language, falling back to English, and preserves
+query parameters and fragments. With JavaScript disabled, it displays links to all four languages.
+Every localized page has a native language menu; an explicit locale URL takes precedence over
+the browser preference. Portfolio links preserve that language. The MCP connection URL stays
+`https://mcp.takeruf.com/china-rail/mcp` in every language.
+
+The build renders `makers/templates/directory.html` with `makers/locales/{ja,zh,ko,en}.json`,
+validates translation completeness, and generates canonical and alternate-language metadata.
+CSS and directory JavaScript use content hashes in their URLs to avoid stale assets.
+OAuth consent follows the browser's Accept-Language preference, with its own four-language
+switcher. Switching preserves the client, redirect, state, resource, and PKCE parameters.
 
 ## Configuration
 
@@ -51,7 +67,8 @@ The build writes a standalone Node.js handler and public files to `makers/.outpu
 identifiers are shortened because the Makers builder injects an `onRequest` binding; preserving
 an unrelated bundled function with that name causes a duplicate-declaration build error.
 
-The deploy script packages only its explicit source/asset allowlist into a ZIP. It excludes
+The deploy script packages only its explicit source/asset allowlist, including all four localized
+pages and the root language redirect, into a ZIP. It excludes
 `.env` files, local CLI metadata, and credentials. Raw CLI output can contain environment
 values or temporary upload credentials, so the script prints only the public deployment result
 and records it in `makers/.output/deployment.json`.
@@ -66,6 +83,10 @@ Health and OAuth discovery must return 200. An unauthenticated MCP request must 
 the namespaced resource metadata URL. Check authenticated initialization and `tools/list`
 separately, then make a live train search within the current ticket window. Successful server
 health does not prove 12306 availability.
+
+Verify all four locale URLs after deployment: direct navigation, language switching, URL copying,
+localized status messages, and mobile layout. The API and OAuth resource URLs must remain
+language-independent.
 
 The directory checks server health once on load and when the user presses refresh. It does not
 poll 12306 or claim that a healthy server guarantees successful train queries.

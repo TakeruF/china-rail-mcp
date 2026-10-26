@@ -1,4 +1,5 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
+import { authorizationLocale, oauthLocales } from './oauth-locale.js';
 
 interface EdgeOneContext {
   request: Request;
@@ -158,19 +159,34 @@ function htmlEscape(value: string): string {
     .replaceAll("'", '&#39;');
 }
 
-function authorizePage(params: URLSearchParams, secret: string, action: string): Response {
+function authorizePage(params: URLSearchParams, secret: string, request: Request): Response {
+  const action = new URL(request.url).pathname;
+  const locale = authorizationLocale(request);
+  const text = oauthLocales[locale];
+  const languageLinks = Object.entries(oauthLocales)
+    .map(([code, language]) => {
+      const query = new URLSearchParams(params);
+      query.set('response_type', 'code');
+      query.set('code_challenge_method', 'S256');
+      query.set('lang', code);
+      return `<a href="${htmlEscape(`${action}?${query}`)}" lang="${language.lang}" hreflang="${language.lang}"${code === locale ? ' aria-current="page"' : ''}>${language.name}</a>`;
+    })
+    .join(' · ');
   const serialized = params.toString();
   const proof = hmac(serialized, secret, 'authorize-request');
   const page = `<!doctype html>
-<html lang="en">
+<html lang="${text.lang}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Authorize China Rail MCP</title>
+  <title>${text.title}</title>
   <style>
     :root { color-scheme: light dark; font-family: system-ui, sans-serif; }
     body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #f4f6f8; color: #17202a; }
-    main { width: min(430px, calc(100% - 40px)); padding: 28px; border-radius: 16px; background: white; box-shadow: 0 12px 40px #0002; }
+    main { box-sizing: border-box; width: min(486px, calc(100% - 40px)); padding: 28px; border-radius: 16px; background: white; box-shadow: 0 12px 40px #0002; }
+    nav { margin-bottom: 24px; font-size: .8rem; line-height: 2; }
+    a { color: inherit; text-underline-offset: 3px; }
+    a[aria-current="page"] { font-weight: 700; }
     h1 { margin: 0 0 10px; font-size: 1.4rem; }
     p { line-height: 1.55; color: #4d5966; }
     label { display: grid; gap: 8px; margin-top: 22px; font-weight: 650; }
@@ -182,17 +198,18 @@ function authorizePage(params: URLSearchParams, secret: string, action: string):
 </head>
 <body>
   <main>
-    <h1>Authorize China Rail MCP</h1>
-    <p>Allow ChatGPT to use the read-only official 12306 timetable, fare, stop, and seat-availability tools.</p>
+    <nav aria-label="${text.language}">${languageLinks}</nav>
+    <h1>${text.title}</h1>
+    <p>${text.introduction}</p>
     <form method="post" action="${htmlEscape(action)}">
       <input type="hidden" name="request" value="${htmlEscape(serialized)}">
       <input type="hidden" name="proof" value="${htmlEscape(proof)}">
-      <label>Connection password
+      <label>${text.password}
         <input type="password" name="password" autocomplete="current-password" required autofocus>
       </label>
-      <button type="submit">Authorize ChatGPT</button>
+      <button type="submit">${text.submit}</button>
     </form>
-    <small>This integration cannot log in to 12306, book tickets, make payments, or modify railway accounts.</small>
+    <small>${text.note}</small>
   </main>
 </body>
 </html>`;
@@ -327,7 +344,7 @@ export async function authorize({ request, env }: EdgeOneContext): Promise<Respo
       resource,
       scope: requestedScopes.join(' '),
     });
-    return authorizePage(normalized, secret, new URL(request.url).pathname);
+    return authorizePage(normalized, secret, request);
   }
 
   if (request.method !== 'POST') return new Response(null, { status: 405 });

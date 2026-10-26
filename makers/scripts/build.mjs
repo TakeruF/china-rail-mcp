@@ -2,12 +2,14 @@ import { build } from 'esbuild';
 import { cp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
+import { buildDirectory, locales } from './locales.mjs';
 
 const root = fileURLToPath(new URL('../../', import.meta.url));
 const output = path.join(root, 'makers/.output');
 await rm(output, { recursive: true, force: true });
 await mkdir(path.join(output, 'cloud-functions'), { recursive: true });
 await cp(path.join(root, 'makers/public'), path.join(output, 'public'), { recursive: true });
+await buildDirectory(root, output);
 await build({
   entryPoints: [path.join(root, 'cloud-functions/router.ts')],
   outfile: path.join(output, 'runtime.mjs'),
@@ -33,6 +35,10 @@ await writeFile(
       buildCommand: 'echo MCP hub bundle is ready',
       outputDirectory: 'public',
       cloudFunctions: { regions: { overseas: ['ap-hongkong'] }, maxDuration: 120 },
+      rewrites: locales.flatMap(({ code }) => [
+        { source: `/${code}`, destination: `/${code}/index.html` },
+        { source: `/${code}/`, destination: `/${code}/index.html` },
+      ]),
       headers: [
         {
           source: '/*',

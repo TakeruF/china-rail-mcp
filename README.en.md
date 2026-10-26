@@ -131,7 +131,13 @@ reference fares for these representative results:
 
 The hosted MCP directory is at [mcp.takeruf.com](https://mcp.takeruf.com). The China Rail endpoint
 is `https://mcp.takeruf.com/china-rail/mcp` and requires OAuth authorization with a connection
-password. For deployment and maintenance, see [the EdgeOne hub guide](makers/README.md).
+password issued by the service administrator. It is hosted on EdgeOne in Hong Kong.
+The directory supports [日本語](https://mcp.takeruf.com/ja), [中文](https://mcp.takeruf.com/zh),
+[한국어](https://mcp.takeruf.com/ko), and [English](https://mcp.takeruf.com/en), with browser-language
+selection at the root and a language switcher on each page. All languages use the same MCP URL;
+the OAuth consent screen also supports these four languages. No local install is needed to use
+this hosted endpoint if you have its connection password. For deployment and maintenance,
+see [the EdgeOne hub guide](makers/README.md).
 
 Not sure whether to use ChatGPT, Qwen Code, TRAE, Coze, or Claude? Start with Silkroad MCP's
 [client compatibility guide](https://takeruf.github.io/silkroad-mcp/en/clients/). Use the
@@ -182,9 +188,10 @@ final click that you must perform, rather than handing the whole installation ba
 ### Want to use it from a phone? Let an AI host a private server
 
 Local stdio works only on the computer running the server. Phone access requires a continuously
-reachable HTTPS deployment connected to an AI client that supports remote MCP. You need GitHub,
-Vercel, and an account whose client supports custom remote MCP; service plan or usage charges may
-apply.
+reachable HTTPS deployment connected to an AI client that supports remote MCP. If you already have
+a connection password for the hosted endpoint above, use that URL. To operate your own instance,
+you need an EdgeOne account and a client that supports custom remote MCP; plan or usage charges
+may apply. Vercel remains an alternative in the self-hosting guide.
 
 Give the entire prompt below to a coding AI that can use both the terminal and a browser:
 
@@ -195,25 +202,27 @@ Repository: https://github.com/TakeruF/china-rail-mcp
 
 Perform the work instead of only giving me a tutorial, and follow these requirements:
 
-1. Read the latest repository README, `docs/SELF_HOSTING.en.md`, and the current client's official
-   remote MCP documentation. Confirm that my GitHub, Vercel, and AI client accounts have the
+1. Read the latest repository README, `makers/README.md`, `docs/SELF_HOSTING.en.md`, and the current
+   client's official remote MCP documentation. Confirm that my EdgeOne and AI client accounts have the
    required features. Explain the impact and ask before incurring charges, creating a cloud
    project, signing in to an account, or deploying to Production.
 2. Clone the repository into a safe temporary or working directory, then run `npm ci` and
    `npm run verify`. Do not modify, commit, or push the project source.
-3. Create a personal project with the repository's Vercel configuration. Generate a unique,
-   strong `MCP_HTTP_BEARER_TOKEN` and store it only as a Vercel Production environment variable.
+3. Create a personal EdgeOne Makers project using `makers/README.md`. Generate a unique,
+   strong `MCP_HTTP_BEARER_TOKEN` and store it as a secret Production environment variable.
+   Set `MCP_PUBLIC_ORIGIN` to my stable HTTPS origin; do not reuse another deployment's password.
    Never put it in source, `.env`, Git, chat, screenshots, deployment logs, or the final report,
    and never ask me to paste it into chat. If I must enter it, have me paste it directly into a
-   masked Vercel field or the deployed site's OAuth page.
-4. Deploy the current `main` commit to Production and record its stable HTTPS hostname. Do not use
-   a Preview URL as the final address. Run
-   `npm run smoke:http -- https://ACTUAL_HOST/api`; verify that health, OAuth metadata, and
-   protected-resource metadata return 200, while unauthenticated `/api/mcp` returns the expected
+   masked EdgeOne field or the deployed site's OAuth page.
+4. Build the current `main` commit with `npm run build:edgeone`, then run
+   `npm run deploy:edgeone -- MY_PROJECT_NAME`. Record its stable production HTTPS hostname; do not
+   use a Preview URL as the final address. Run
+   `npm run smoke:http -- https://ACTUAL_HOST/china-rail`; verify that health, OAuth metadata, and
+   protected-resource metadata return 200, while unauthenticated `/china-rail/mcp` returns the expected
    401 with discovery information. At this stage, that 401 proves authentication is working; it
    is not a deployment failure.
 5. Follow the remote-MCP connection flow actually supported by the current client, connect
-   `https://ACTUAL_HOST/api/mcp` to my account, and complete OAuth. ChatGPT UI and feature
+   `https://ACTUAL_HOST/china-rail/mcp` to my account, and complete OAuth. ChatGPT UI and feature
    availability may vary by account or version, so check current official documentation and the
    actual UI. Do not guess menu names or claim that every account is supported. If I must act,
    ask me only for the login, authorization, or final UI step.
@@ -226,7 +235,7 @@ Perform the work instead of only giving me a tutorial, and follow these requirem
    and current product support. Do not make the server public or disable authentication as a
    workaround. If the account or mobile app does not currently support it, report that product
    limitation clearly while leaving the safely hosted service available to supported clients.
-8. Report only the Vercel project name and HTTPS MCP URL without secrets, Production deployment
+8. Report only the EdgeOne project name and HTTPS MCP URL without secrets, Production deployment
    status, smoke-test result, web/desktop call result, mobile call result, possible cost points,
    and how to rotate or revoke access. Never display `MCP_HTTP_BEARER_TOKEN`.
 ```
@@ -284,6 +293,10 @@ observations and failure modes. All dates and timetable times are China Standard
 Time (`Asia/Shanghai`). Public endpoints are undocumented; verify important travel
 information with official channels.
 
+The canonical EdgeOne endpoint was also checked on 2026-10-26: OAuth, MCP initialization,
+and a city-scoped Shanghai → Hangzhou East search returned live journeys with fares and seat
+availability. This is a point-in-time check, not an uptime guarantee.
+
 ## Scope
 
 China Rail MCP exposes public railway data to MCP-compatible clients such as Codex, Claude
@@ -295,7 +308,7 @@ the official query page are memory-only and expire from the provider after ten m
 ## Install and client configuration
 
 `npm run test:integration` is the separate opt-in check against the current public 12306 service.
-For Docker and a private Vercel deployment, see
+For Docker, EdgeOne, or a private Vercel deployment, see
 [Self-hosting China Rail MCP](docs/SELF_HOSTING.en.md).
 
 After publication, the package executable will be usable as `npx china-rail-mcp`.
@@ -330,8 +343,9 @@ docker build -t china-rail-mcp:local .
 }
 ```
 
-For a client that requires a public HTTPS URL, deploy the repository to your own Vercel project
-and protect it with a unique `MCP_HTTP_BEARER_TOKEN`. The complete endpoint checks and ChatGPT
+For a client that requires a public HTTPS URL, use the hosted endpoint with an issued password,
+or deploy your own EdgeOne project following [the hub guide](makers/README.md) and protect it
+with a unique `MCP_HTTP_BEARER_TOKEN`. Vercel is also supported. Endpoint checks and ChatGPT
 Developer Mode instructions are in the
 [self-hosting guide](docs/SELF_HOSTING.en.md).
 
@@ -350,14 +364,17 @@ matching package metadata.
 
 ### EdgeOne Makers
 
-The optional `cloud-functions/mcp.ts` entry exposes stateless Streamable HTTP at `/mcp`, and
-`cloud-functions/health.ts` exposes `/health`. Deploy it as an EdgeOne Makers Node.js Cloud
-Function and set the secret environment variable `MCP_HTTP_BEARER_TOKEN`; without that variable,
+The current hub uses `cloud-functions/router.ts` to serve `/china-rail/mcp`,
+`/china-rail/health`, and namespaced OAuth endpoints, alongside the four-language directory.
+The legacy root `/mcp` and `/health` routes remain available, with separate OAuth resource URLs.
+See [the hub guide](makers/README.md) for build, deployment, and canonical-domain configuration.
+Set the secret environment variable `MCP_HTTP_BEARER_TOKEN`; without that variable,
 the MCP route returns `503` rather than becoming anonymously callable. The same secret is the
 single-user connection password for the bundled OAuth 2.1 Authorization Code + PKCE flow used by
 ChatGPT custom apps. OAuth clients receive one-hour access tokens and renewable 30-day refresh
-tokens; the original connection password is submitted only to this deployment's `/authorize`
-route and is not stored by ChatGPT. Existing clients may continue to use the static bearer token.
+tokens; the connection password is submitted to this deployment's `/china-rail/authorize`
+route (or legacy `/authorize`). Clients use issued OAuth tokens afterward. Existing clients may
+continue to use the static bearer token.
 The official anonymous 12306 session remains process-memory-only and is never exposed to clients.
 
 ## Tools
