@@ -37,5 +37,16 @@
   "builtBy": "Built by",
   "footerServices": "MCP services",
   "docsUrl": "https://github.com/TakeruF/china-rail-mcp/blob/main/README.en.md",
-  "eyebrow": "TOOLS FOR YOUR AI"
+  "eyebrow": "TOOLS FOR YOUR AI",
+  "terminalTitle": "Console",
+  "terminalIntro": "A little less clicking.",
+  "terminalWelcome": "Type help to see what you can do.",
+  "terminalOutput": "Command output",
+  "terminalCommands": "Quick commands",
+  "terminalInput": "Enter a command",
+  "terminalRun": "Run command",
+  "terminalHint": "Enter to run · ↑↓ for history",
+  "terminalHelp": "help    Show commands\nlist    Services and connection URL\ncopy    Copy connection URL\nstatus  Check server response\nlang ja|zh|ko|en  Switch language\nclear   Clear output\ntrain   Take a little detour",
+  "terminalUnknown": "Unknown command. Type help to see available commands.",
+  "terminalLanguage": "Use lang ja, lang zh, lang ko, or lang en."
 }

@@ -37,5 +37,16 @@
   "builtBy": "制作",
   "footerServices": "MCPサービス",
   "docsUrl": "https://github.com/TakeruF/china-rail-mcp/blob/main/README.en.md",
-  "eyebrow": "AIに、つながるツール"
+  "eyebrow": "AIに、つながるツール",
+  "terminalTitle": "コンソール",
+  "terminalIntro": "接続を、コマンドでも。",
+  "terminalWelcome": "help で使えるコマンドを表示できます。",
+  "terminalOutput": "コマンドの実行結果",
+  "terminalCommands": "クイックコマンド",
+  "terminalInput": "コマンドを入力",
+  "terminalRun": "コマンドを実行",
+  "terminalHint": "Enter で実行 · ↑↓ で履歴",
+  "terminalHelp": "help    コマンド一覧\nlist    サービスと接続URL\ncopy    接続URLをコピー\nstatus  サーバーの応答を確認\nlang ja|zh|ko|en  言語を切り替え\nclear   出力をクリア\ntrain   ちょっと寄り道",
+  "terminalUnknown": "使えるコマンドは help で確認できます。",
+  "terminalLanguage": "lang ja、lang zh、lang ko、lang en のいずれかを入力してください。"
 }

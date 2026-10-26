@@ -138,6 +138,8 @@ selection at the root and a language switcher on each page. All languages use th
 the OAuth consent screen also supports these four languages. No local install is needed to use
 this hosted endpoint if you have its connection password. For deployment and maintenance,
 see [the EdgeOne hub guide](makers/README.md).
+The lightweight terminal-style directory also offers on-page commands such as `help`, `copy`,
+and `status`, alongside the usual buttons and connection instructions.
 
 Not sure whether to use ChatGPT, Qwen Code, TRAE, Coze, or Claude? Start with Silkroad MCP's
 [client compatibility guide](https://takeruf.github.io/silkroad-mcp/en/clients/). Use the

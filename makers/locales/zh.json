@@ -37,5 +37,16 @@
   "builtBy": "作者",
   "footerServices": "MCP 服务",
   "docsUrl": "https://github.com/TakeruF/china-rail-mcp",
-  "eyebrow": "为 AI 连接更多工具"
+  "eyebrow": "为 AI 连接更多工具",
+  "terminalTitle": "控制台",
+  "terminalIntro": "也可以用命令操作。",
+  "terminalWelcome": "输入 help，查看可用命令。",
+  "terminalOutput": "命令输出",
+  "terminalCommands": "快捷命令",
+  "terminalInput": "输入命令",
+  "terminalRun": "执行命令",
+  "terminalHint": "按 Enter 执行 · ↑↓ 查看历史",
+  "terminalHelp": "help    查看命令\nlist    服务及连接地址\ncopy    复制连接地址\nstatus  检查服务器响应\nlang ja|zh|ko|en  切换语言\nclear   清空输出\ntrain   开个小差",
+  "terminalUnknown": "未知命令。输入 help 查看可用命令。",
+  "terminalLanguage": "请输入 lang ja、lang zh、lang ko 或 lang en。"
 }
