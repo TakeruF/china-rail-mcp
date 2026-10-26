@@ -1,12 +1,23 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
 import type { RailProvider } from './providers/types.js';
-import { journeys, paginateJourneys, toolError } from './tools/common.js';
+import { paginateJourneys, toolError } from './tools/common.js';
+import { searchJourneys } from './tools/search.js';
 import { timeToMinutes } from './utils/date.js';
 import { TRAIN_TYPE_CODES } from './domain/train.js';
 
 const date = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Use YYYY-MM-DD (Asia/Shanghai).');
 const time = z.string().regex(/^\d{2}:\d{2}$/, 'Use HH:MM.');
+const searchScope = {
+  scope: z
+    .enum(['station', 'city'])
+    .default('station')
+    .describe(
+      'Use city when the user names a city; never restrict a city request to a particular station. Station requires exact station names or codes.',
+    ),
+  fromScope: z.enum(['station', 'city']).optional().describe('Override scope for from only.'),
+  toScope: z.enum(['station', 'city']).optional().describe('Override scope for to only.'),
+};
 const filters = {
   departAfter: time.optional(),
   departBefore: time.optional(),
@@ -54,8 +65,10 @@ export function createServer(provider: RailProvider): McpServer {
   const server = new McpServer(
     { name: 'china-rail-mcp', version: '0.1.0' },
     {
+      // McpServer emits notifications/tools/list_changed when registered tools change.
+      capabilities: { tools: { listChanged: true } },
       instructions:
-        'Read-only official China Railway 12306 data. Resolve ambiguous stations with search_stations; never silently substitute a city for a station. Use limit/offset pagination for train searches. Route searches, fares, and availability are limited to the current ticket-query window; get_train_details may return a published timetable before tickets go on sale. Never interpret TIMETABLE_NOT_YET_PUBLISHED as cancellation or non-operation. Data and fares are informational and important travel or payment details must be verified through official 12306 channels. Do not poll automatically.',
+        'Read-only official China Railway 12306 data. When the user specifies a city, use city scope and do not restrict the search to a particular station. Use station scope for an explicitly named station; resolve ambiguous names with search_stations. Inspect searchedStations and excludedStations before describing coverage. isPotentialDetour is a duration-based heuristic, not a confirmed route detour. Use limit/offset pagination for train searches. Route searches, fares, and availability are limited to the current ticket-query window; get_train_details may return a published timetable before tickets go on sale. Never interpret TIMETABLE_NOT_YET_PUBLISHED as cancellation or non-operation. Data and fares are informational and important travel or payment details must be verified through official 12306 channels. Do not poll automatically.',
     },
   );
   server.registerTool(
@@ -98,11 +111,12 @@ export function createServer(provider: RailProvider): McpServer {
     'search_trains',
     {
       description:
-        'Search official read-only 12306 route, fare, and availability data within the current ticket-query window. Results are paginated after filtering. Times are Asia/Shanghai.',
+        'Search official read-only 12306 route, fare, and availability data within the current ticket-query window. When the user specifies a city, use city scope; do not restrict the search to a particular station. City scope merges all station pairs in the official city groups (e.g. 上海虹桥, 上海南, 上海). Use fromScope/toScope for mixed city/station endpoints. Returns searchedStations, excludedStations, and a duration-based isPotentialDetour flag (not a confirmed detour). Results are merged and filtered before pagination. Times are Asia/Shanghai.',
       inputSchema: {
         from: z.string().min(1),
         to: z.string().min(1),
         date,
+        ...searchScope,
         ...filters,
         ...pagination(20),
       },
@@ -110,7 +124,8 @@ export function createServer(provider: RailProvider): McpServer {
     },
     async ({ limit, offset, ...input }) => {
       try {
-        return text(paginateJourneys(await journeys(provider, input), { limit, offset }));
+        const { journeys, ...coverage } = await searchJourneys(provider, input);
+        return text({ ...coverage, ...paginateJourneys(journeys, { limit, offset }) });
       } catch (e) {
         return toolError(e);
       }
@@ -157,11 +172,12 @@ export function createServer(provider: RailProvider): McpServer {
     'compare_trains',
     {
       description:
-        'Filter, sort, and paginate journeys; this does not make subjective recommendations.',
+        'Filter, sort, and paginate journeys; this does not make subjective recommendations. When the user specifies a city, use city scope and do not restrict the search to a particular station. Returns searchedStations, excludedStations, and duration-based isPotentialDetour flags.',
       inputSchema: {
         from: z.string().min(1),
         to: z.string().min(1),
         date,
+        ...searchScope,
         ...filters,
         ...pagination(10),
         sortBy: z
@@ -172,7 +188,7 @@ export function createServer(provider: RailProvider): McpServer {
     },
     async ({ sortBy, limit, offset, ...input }) => {
       try {
-        const result = await journeys(provider, input);
+        const { journeys: result, ...coverage } = await searchJourneys(provider, input);
         result.sort((a, b) =>
           sortBy === 'duration'
             ? a.durationMinutes - b.durationMinutes
@@ -182,7 +198,7 @@ export function createServer(provider: RailProvider): McpServer {
                 ? minPrice(a) - minPrice(b)
                 : timeToMinutes(a.departureTime) - timeToMinutes(b.departureTime),
         );
-        return text(paginateJourneys(result, { limit, offset }));
+        return text({ ...coverage, ...paginateJourneys(result, { limit, offset }) });
       } catch (e) {
         return toolError(e);
       }

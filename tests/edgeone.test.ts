@@ -69,7 +69,7 @@ describe('EdgeOne HTTP transport', () => {
       id: 1,
       result: {
         serverInfo: { name: 'china-rail-mcp', version: '0.1.0' },
-        capabilities: { tools: {} },
+        capabilities: { tools: { listChanged: true } },
       },
     });
   });

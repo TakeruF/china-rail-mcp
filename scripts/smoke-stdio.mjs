@@ -10,7 +10,7 @@ const expectedTools = [
   'search_trains',
 ];
 
-const child = spawn(process.execPath, ['dist/index.js'], {
+const child = spawn(process.execPath, [process.argv[2] ?? 'dist/index.js'], {
   cwd: new URL('..', import.meta.url),
   stdio: ['pipe', 'pipe', 'pipe'],
 });
@@ -62,6 +62,9 @@ try {
   const initialized = await waitFor(1);
   if (initialized.error || initialized.result?.serverInfo?.name !== 'china-rail-mcp') {
     throw new Error(`Unexpected initialize response: ${JSON.stringify(initialized)}`);
+  }
+  if (initialized.result?.capabilities?.tools?.listChanged !== true) {
+    throw new Error('The server must advertise notifications/tools/list_changed support.');
   }
 
   send({ jsonrpc: '2.0', method: 'notifications/initialized', params: {} });
